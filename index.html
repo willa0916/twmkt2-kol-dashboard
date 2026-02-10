@@ -4,228 +4,243 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>行銷2_KOL成效資料庫</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
     <style>
-        /* 字體與視覺調整 */
-        body { font-family: 'Microsoft JhengHei', sans-serif; background-color: #f1f5f9; font-size: 16px; }
-        .modal-bg { background-color: rgba(15, 23, 42, 0.9); backdrop-filter: blur(12px); }
-        .text-kpi { font-size: 2.2rem; font-weight: 900; line-height: 1; }
+        body { font-family: 'Microsoft JhengHei', sans-serif; background-color: #f8fafc; font-size: 16px; }
+        .modal-bg { background-color: rgba(15, 23, 42, 0.9); backdrop-filter: blur(5px); }
+        .text-kpi { font-size: 2rem; font-weight: 900; line-height: 1.2; }
         [v-cloak] { display: none !important; }
-        .table-header { font-size: 0.85rem !important; letter-spacing: 0.05em; font-weight: 900; color: #64748b; }
-        .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* 載入動畫 */
+        .loader {
+            border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%;
+            width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
 <div id="app" v-cloak>
-    <nav class="bg-slate-900 text-white p-6 shadow-2xl sticky top-0 z-50">
+    <nav class="bg-slate-900 text-white p-5 shadow-xl sticky top-0 z-50">
         <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-3xl font-black tracking-tighter flex items-center">
-                <i class="fas fa-chart-line text-blue-400 mr-4"></i>行銷2_KOL成效資料庫
+            <h1 class="text-xl md:text-2xl font-black tracking-wider flex items-center">
+                <i class="fas fa-chart-line text-blue-400 mr-3"></i>行銷2_KOL成效資料庫<span class="ml-2 text-xs bg-blue-600 px-2 py-1 rounded">PRO</span>
             </h1>
-            <div class="flex items-center gap-6">
-                <button v-if="savedId" @click="resetSettings" class="text-sm text-slate-400 hover:text-white transition">
-                    <i class="fas fa-cog mr-1"></i>重新設定
+            <div class="flex items-center gap-3">
+                <button v-if="savedId" @click="resetSettings" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded transition border border-slate-600">
+                    <i class="fas fa-cog mr-1"></i>設定
                 </button>
-                <button v-if="savedId" @click="fetchData" class="bg-blue-600 hover:bg-blue-500 px-6 py-2.5 rounded-xl font-black shadow-lg flex items-center transition active:scale-95">
+                <button v-if="savedId" @click="fetchData" class="bg-blue-600 hover:bg-blue-500 px-5 py-2 rounded text-sm font-bold shadow-lg flex items-center transition active:scale-95" :disabled="loading">
                     <i :class="loading ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'" class="mr-2"></i>
-                    {{ loading ? '連線中' : '同步' }}
+                    {{ loading ? '更新中' : '同步資料' }}
                 </button>
             </div>
         </div>
     </nav>
 
-    <div v-if="!savedId" class="min-h-[85vh] flex items-center justify-center p-6 animate-fade-in">
-        <div class="bg-white rounded-[2.5rem] shadow-2xl p-12 max-w-2xl w-full border border-slate-100 text-center">
-            <div class="w-24 h-24 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-8 text-4xl shadow-inner">
-                <i class="fas fa-link"></i>
+    <div v-if="!savedId" class="min-h-[80vh] flex items-center justify-center p-6">
+        <div class="bg-white rounded-[2rem] shadow-2xl p-10 max-w-xl w-full text-center border border-slate-100">
+            <div class="w-20 h-20 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-6 text-4xl shadow-inner">
+                <i class="fas fa-database"></i>
             </div>
-            <h2 class="text-4xl font-black text-slate-800 mb-4">連結您的資料庫</h2>
-            <p class="text-slate-500 mb-10 text-lg">輸入 Google Sheet ID，系統將自動分析數據</p>
+            <h2 class="text-3xl font-black text-slate-800 mb-2">連結資料庫</h2>
+            <p class="text-slate-500 mb-8">請輸入 Google Sheet ID 以開始分析</p>
             
-            <div class="space-y-6">
-                <input v-model="inputSheetId" type="text" placeholder="請貼上 ID (或網址)..." 
-                       class="w-full p-5 bg-slate-50 border-2 border-slate-200 rounded-2xl focus:border-blue-500 outline-none text-xl transition shadow-sm">
-                <button @click="saveIdAndLoad" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black hover:bg-blue-700 shadow-xl text-2xl transition-all transform hover:scale-[1.02] active:scale-95">
+            <div class="space-y-4">
+                <input v-model="inputSheetId" type="text" placeholder="例如: 1A2B3C_xYz..." 
+                       class="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-blue-500 outline-none text-lg transition shadow-sm">
+                <button @click="saveIdAndLoad" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black hover:bg-blue-700 shadow-xl text-xl transition transform hover:scale-[1.02]">
                     確認並啟動
                 </button>
             </div>
         </div>
     </div>
 
-    <div class="container mx-auto p-6 md:p-10" v-if="savedId">
-        <div v-if="errorMsg" class="bg-rose-50 border-l-8 border-rose-500 text-rose-800 p-8 mb-10 rounded-2xl shadow-xl animate-fade-in">
-            <div class="flex items-center gap-4 text-2xl font-black mb-2">
-                <i class="fas fa-exclamation-triangle"></i> 資料獲取失敗
+    <div class="container mx-auto p-4 md:p-8" v-if="savedId">
+        
+        <div v-if="errorMsg" class="bg-rose-50 border-l-8 border-rose-500 text-rose-800 p-6 mb-8 rounded-r-xl shadow-md flex justify-between items-center">
+            <div>
+                <div class="font-bold text-lg mb-1"><i class="fas fa-exclamation-triangle mr-2"></i>讀取失敗</div>
+                <p class="text-sm">{{ errorMsg }}</p>
             </div>
-            <p class="text-lg">{{ errorMsg }}</p>
-            <div class="mt-6 flex gap-4">
-                <button @click="fetchData" class="bg-rose-600 text-white px-8 py-3 rounded-xl font-bold active:scale-95">再試一次</button>
-                <button @click="resetSettings" class="bg-white border border-rose-200 px-8 py-3 rounded-xl font-bold">更換 ID</button>
-            </div>
+            <button @click="resetSettings" class="bg-white border border-rose-200 px-4 py-2 rounded text-sm font-bold hover:bg-rose-100">重設</button>
         </div>
 
-        <div class="flex flex-wrap gap-8 items-end mb-12 animate-fade-in">
-            <div class="flex-1 min-w-[350px]">
-                <label class="block text-sm font-black text-slate-400 mb-3 uppercase tracking-widest">快速篩選 (名稱/專案/切角)</label>
+        <div class="bg-white p-6 rounded-3xl shadow-sm mb-8 border border-slate-100 flex flex-wrap gap-6 items-end">
+            <div class="flex-1 min-w-[300px]">
+                <label class="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">快速搜尋</label>
                 <div class="relative">
-                    <i class="fas fa-search absolute left-5 top-5 text-slate-300 text-xl"></i>
-                    <input v-model="searchQuery" type="text" placeholder="輸入關鍵字..." 
-                           class="w-full pl-14 p-5 bg-white rounded-3xl text-xl outline-none shadow-sm focus:ring-4 focus:ring-blue-100 transition border border-slate-100">
+                    <i class="fas fa-search absolute left-4 top-4 text-slate-400 text-lg"></i>
+                    <input v-model="searchQuery" type="text" placeholder="網紅 / 專案 / 切角..." class="w-full pl-12 p-3 bg-slate-50 border border-slate-200 rounded-xl text-lg outline-none focus:ring-2 focus:ring-blue-500 transition">
                 </div>
             </div>
-            <div class="bg-slate-800 text-white px-8 py-6 rounded-3xl shadow-xl flex items-center gap-8">
+            <div class="w-full md:w-auto flex gap-8 px-4">
                 <div class="text-center">
-                    <div class="text-xs text-slate-400 font-bold uppercase mb-1">合作網紅</div>
-                    <div class="text-4xl font-black">{{ filteredList.length }}</div>
+                    <div class="text-xs text-slate-400 font-bold uppercase mb-1">資料筆數</div>
+                    <div class="text-2xl font-black text-slate-800">{{ filteredList.length }}</div>
                 </div>
             </div>
         </div>
 
-        <div class="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden min-h-[500px]">
-            <div v-if="loading" class="flex flex-col items-center justify-center py-52">
-                <div class="w-20 h-20 border-8 border-slate-100 border-t-blue-600 rounded-full animate-spin mb-8"></div>
-                <p class="text-2xl font-black text-slate-400">正在分析成效數據...</p>
+        <div class="bg-white rounded-[2rem] shadow-xl border border-slate-100 overflow-hidden min-h-[500px]">
+            <div v-if="loading" class="flex flex-col items-center justify-center py-40 text-slate-400">
+                <div class="loader"></div>
+                <p class="text-xl font-bold mt-4">正在分析數據...</p>
             </div>
 
             <div v-else class="overflow-x-auto">
                 <table class="w-full text-left">
-                    <thead class="bg-slate-50 text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                    <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-black tracking-widest border-b border-slate-200">
                         <tr>
-                            <th class="px-10 py-6 table-header">KOL / 分類</th>
-                            <th class="px-10 py-6 table-header">平台</th>
-                            <th class="px-6 py-6 text-center table-header">次數</th>
-                            <th class="px-10 py-6 text-right table-header">總安裝/CPI</th>
-                            <th class="px-10 py-6 text-right table-header">總營收/ROAS</th>
-                            <th class="px-10 py-6 text-center table-header">分析</th>
+                            <th class="px-8 py-5">網紅 / 分類</th>
+                            <th class="px-8 py-5">平台</th>
+                            <th class="px-6 py-5 text-center">次數</th>
+                            <th class="px-8 py-5 text-right">總安裝 (CPI)</th>
+                            <th class="px-8 py-5 text-right">總營收 (ROAS)</th>
+                            <th class="px-8 py-5 text-center">操作</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-50">
-                        <tr v-for="kol in filteredList" :key="kol.name" class="hover:bg-blue-50/40 transition-colors">
-                            <td class="px-10 py-10">
-                                <div class="font-black text-slate-800 text-2xl mb-1">{{ kol.name }}</div>
-                                <span class="text-xs font-black bg-slate-100 text-slate-500 px-3 py-1 rounded-full uppercase">{{ kol.category }}</span>
+                    <tbody class="divide-y divide-slate-100 text-base">
+                        <tr v-for="kol in filteredList" :key="kol.name" class="hover:bg-blue-50/40 transition">
+                            <td class="px-8 py-6">
+                                <div class="font-bold text-slate-800 text-xl">{{ kol.name }}</div>
+                                <span class="text-xs bg-slate-100 px-2 py-1 rounded inline-block mt-1 text-slate-500 font-bold uppercase">{{ kol.category }}</span>
                             </td>
-                            <td class="px-10 py-10">
-                                <div class="flex items-center gap-3 font-black text-slate-700 text-xl">
-                                    <i :class="getPlatformIcon(kol.platform)" class="text-blue-500"></i>
+                            <td class="px-8 py-6">
+                                <a :href="kol.link" target="_blank" class="flex items-center gap-2 hover:text-blue-600 group font-bold text-slate-700">
+                                    <i :class="getPlatformIcon(kol.platform)" class="text-lg text-blue-400 group-hover:text-blue-600"></i>
                                     {{ kol.platform }}
-                                </div>
-                                <div class="text-sm text-slate-400 mt-2 font-bold">{{ formatNumber(kol.latestFollowers) }} Followers</div>
+                                </a>
+                                <div class="text-xs text-slate-400 mt-1">{{ formatNumber(kol.latestFollowers) }} 粉絲</div>
                             </td>
-                            <td class="px-6 py-10 text-center">
-                                <span class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto border border-indigo-100 font-black text-2xl shadow-sm">
-                                    {{ kol.projects.length }}
-                                </span>
+                            <td class="px-6 py-6 text-center">
+                                <span class="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg text-sm font-bold border border-indigo-100">{{ kol.projects.length }}</span>
                             </td>
-                            <td class="px-10 py-10 text-right">
-                                <div class="font-black text-emerald-600 text-3xl mb-1">{{ formatNumber(calculateTotal(kol.projects, 'installs')) }}</div>
-                                <div class="text-sm text-slate-400 font-bold uppercase">CPI: ${{ calculateCPI(kol) }}</div>
+                            <td class="px-8 py-6 text-right">
+                                <div class="font-bold text-emerald-600 text-xl">{{ formatNumber(calculateTotal(kol.projects, 'installs')) }}</div>
+                                <div class="text-xs text-slate-400 font-bold">CPI: ${{ calculateCPI(kol) }}</div>
                             </td>
-                            <td class="px-10 py-10 text-right">
-                                <div class="font-black text-orange-600 text-3xl mb-1">${{ formatNumber(calculateTotal(kol.projects, 'revenue')) }}</div>
-                                <div class="text-sm text-slate-400 font-bold uppercase">ROAS: {{ calculateROAS(kol) }}%</div>
+                            <td class="px-8 py-6 text-right">
+                                <div class="font-bold text-orange-600 text-xl">${{ formatNumber(calculateTotal(kol.projects, 'revenue')) }}</div>
+                                <div class="text-xs text-slate-400 font-bold">ROAS: {{ calculateROAS(kol) }}%</div>
                             </td>
-                            <td class="px-10 py-10 text-center">
-                                <button @click="openDetails(kol)" class="w-16 h-16 bg-white border-2 border-blue-500 text-blue-600 hover:bg-blue-600 hover:text-white rounded-[1.2rem] shadow-sm transition-all flex items-center justify-center text-2xl active:scale-90">
+                            <td class="px-8 py-6 text-center">
+                                <button @click="openDetails(kol)" class="w-12 h-12 rounded-xl bg-white border border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white transition shadow-sm flex items-center justify-center text-lg">
                                     <i class="fas fa-chart-pie"></i>
                                 </button>
                             </td>
                         </tr>
                     </tbody>
                 </table>
+                <div v-if="filteredList.length === 0 && !loading" class="py-32 text-center text-slate-400">
+                   <i class="fas fa-search fa-3x mb-4 opacity-20"></i>
+                   <p class="text-lg">找不到相關資料</p>
+                </div>
             </div>
         </div>
     </div>
 
-    <div v-if="currentKOL" class="fixed inset-0 modal-bg flex items-center justify-center z-[100] p-4 lg:p-10 animate-fade-in" @click.self="closeDetails">
-        <div class="bg-white rounded-[3rem] shadow-2xl w-full max-w-7xl max-h-full overflow-hidden flex flex-col">
-            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <div class="flex items-center gap-8">
-                    <div class="w-20 h-20 rounded-[2rem] bg-blue-600 text-white flex items-center justify-center text-4xl font-black shadow-2xl">
+    <div v-if="currentKOL" class="fixed inset-0 modal-bg flex items-center justify-center z-[100] p-4 lg:p-8" @click.self="closeDetails">
+        <div class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
+            
+            <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
+                <div class="flex items-center gap-6">
+                    <div class="w-16 h-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-3xl font-black shadow-lg">
                         {{ currentKOL.name.charAt(0) }}
                     </div>
                     <div>
-                        <h2 class="text-4xl font-black text-slate-800 tracking-tight">{{ currentKOL.name }} 成效報告</h2>
-                        <div class="flex gap-4 mt-3">
-                            <span class="bg-blue-100 text-blue-700 px-4 py-1.5 rounded-xl text-sm font-black uppercase tracking-wider">#{{ currentKOL.category }}</span>
-                            <span class="text-sm text-slate-400 font-bold flex items-center"><i class="fas fa-history mr-2"></i>資料範圍: {{ currentKOL.projects[currentKOL.projects.length-1].date }} ~ {{ currentKOL.projects[0].date }}</span>
+                        <h2 class="text-3xl font-black text-slate-800 tracking-tight">{{ currentKOL.name }}</h2>
+                        <div class="flex items-center gap-3 mt-1">
+                            <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-xs font-black uppercase">#{{ currentKOL.category }}</span>
+                            <span class="text-sm text-slate-400 font-bold"> <i class="far fa-clock mr-1"></i>最近更新: {{ currentKOL.projects[0].date }}</span>
                         </div>
                     </div>
                 </div>
-                <button @click="closeDetails" class="w-16 h-16 rounded-full hover:bg-rose-50 text-slate-300 hover:text-rose-500 transition-all text-4xl flex items-center justify-center">&times;</button>
+                <button @click="closeDetails" class="w-12 h-12 rounded-full hover:bg-rose-50 text-slate-300 hover:text-rose-500 transition text-2xl flex items-center justify-center">&times;</button>
             </div>
             
-            <div class="p-10 overflow-y-auto custom-scrollbar flex-1 bg-white">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-                    <div class="p-8 bg-slate-50 rounded-[2rem] border border-slate-100">
-                        <div class="text-sm font-black text-slate-400 uppercase tracking-widest mb-2">總成本 (Cost)</div>
-                        <div class="text-slate-800 text-kpi">${{ formatNumber(calculateTotal(currentKOL.projects, 'cost')) }}</div>
+            <div class="p-8 overflow-y-auto custom-scrollbar bg-white">
+                
+                <div class="grid grid-cols-2 lg:grid-cols-5 gap-5 mb-10">
+                    <div class="p-6 bg-slate-50 rounded-3xl border border-slate-100 text-center hover:shadow-md transition">
+                        <div class="text-xs text-slate-400 font-bold uppercase mb-2">總成本 (Cost)</div>
+                        <div class="text-kpi text-slate-700">${{ formatNumber(calculateTotal(currentKOL.projects, 'cost')) }}</div>
                     </div>
-                    <div class="p-8 bg-blue-50 rounded-[2rem] border border-blue-100">
-                        <div class="text-sm font-black text-blue-600 uppercase tracking-widest mb-2">總觀看 (Views)</div>
-                        <div class="text-blue-800 text-kpi">{{ formatNumber(calculateTotal(currentKOL.projects, 'views')) }}</div>
+                    <div class="p-6 bg-emerald-50 rounded-3xl border border-emerald-100 text-center hover:shadow-md transition">
+                        <div class="text-xs text-emerald-600 font-bold uppercase mb-2">總安裝 (Installs)</div>
+                        <div class="text-kpi text-emerald-700">{{ formatNumber(calculateTotal(currentKOL.projects, 'installs')) }}</div>
                     </div>
-                    <div class="p-8 bg-emerald-50 rounded-[2rem] border border-emerald-100">
-                        <div class="text-sm font-black text-emerald-600 uppercase tracking-widest mb-2">總安裝 (Installs)</div>
-                        <div class="text-emerald-800 text-kpi">{{ formatNumber(calculateTotal(currentKOL.projects, 'installs')) }}</div>
+                    <div class="p-6 bg-orange-50 rounded-3xl border border-orange-100 text-center hover:shadow-md transition">
+                        <div class="text-xs text-orange-600 font-bold uppercase mb-2">總營收 (Revenue)</div>
+                        <div class="text-kpi text-orange-700">${{ formatNumber(calculateTotal(currentKOL.projects, 'revenue')) }}</div>
                     </div>
-                    <div class="p-8 bg-orange-50 rounded-[2rem] border border-orange-100">
-                        <div class="text-sm font-black text-orange-600 uppercase tracking-widest mb-2">累積營收 (Revenue)</div>
-                        <div class="text-orange-800 text-kpi">${{ formatNumber(calculateTotal(currentKOL.projects, 'revenue')) }}</div>
+                    <div class="p-6 bg-indigo-50 rounded-3xl border border-indigo-100 text-center hover:shadow-md transition">
+                        <div class="text-xs text-indigo-600 font-bold uppercase mb-2">平均 ROAS</div>
+                        <div class="text-kpi text-indigo-700">{{ calculateROAS(currentKOL) }}%</div>
+                    </div>
+                    <div class="p-6 bg-cyan-50 rounded-3xl border border-cyan-100 text-center hover:shadow-md transition">
+                        <div class="text-xs text-cyan-600 font-bold uppercase mb-2">平均 CPI</div>
+                        <div class="text-kpi text-cyan-700">${{ calculateCPI(currentKOL) }}</div>
                     </div>
                 </div>
 
-                <div class="mb-12 bg-white rounded-[2.5rem] border-2 border-slate-50 p-10 shadow-sm">
-                    <div class="flex flex-wrap justify-between items-center mb-10 gap-6">
-                        <h3 class="text-2xl font-black text-slate-800 flex items-center">
-                            <i class="fas fa-chart-area mr-4 text-blue-500"></i> 成效發展趨勢
+                <div class="mb-10 bg-white border-2 border-slate-50 rounded-[2rem] p-8 shadow-sm">
+                    <div class="flex flex-wrap justify-between items-center mb-8 gap-4">
+                        <h3 class="text-xl font-black text-slate-800 flex items-center">
+                            <i class="fas fa-chart-area mr-3 text-blue-500"></i>成效趨勢分析
                         </h3>
-                        <div class="flex bg-slate-100 p-2 rounded-2xl gap-2">
-                            <button v-for="m in ['revenue', 'installs', 'views', 'cost']" :key="m" @click="updateChart(m)" 
-                                :class="['px-8 py-3 rounded-xl font-black text-sm uppercase transition-all', activeMetric === m ? 'bg-white text-blue-600 shadow-xl scale-105' : 'text-slate-500 hover:text-slate-800']">
-                                {{ m === 'revenue' ? '營收' : m === 'installs' ? '安裝' : m === 'views' ? '觀看' : '報價' }}
+                        <div class="flex bg-slate-100 p-1.5 rounded-2xl gap-1 overflow-x-auto">
+                            <button v-for="m in ['revenue', 'installs', 'views', 'cpi', 'roas']" :key="m" 
+                                @click="updateChart(m)" 
+                                :class="['px-6 py-2 text-xs rounded-xl font-black uppercase transition-all whitespace-nowrap', activeMetric === m ? 'bg-white text-blue-600 shadow-md transform scale-105' : 'text-slate-500 hover:text-slate-700']">
+                                {{ m }}
                             </button>
                         </div>
                     </div>
-                    <div class="h-[400px] w-full">
+                    <div class="h-[350px] w-full">
                         <canvas id="trendChart"></canvas>
                     </div>
                 </div>
 
-                <h3 class="text-2xl font-black text-slate-800 mb-8 px-4">詳細數據清單</h3>
-                <div class="overflow-hidden rounded-[2rem] border border-slate-100 shadow-sm mb-10">
-                    <table class="w-full text-xl text-left">
-                        <thead class="bg-slate-50 text-slate-400 font-black uppercase text-xs">
+                <h3 class="text-xl font-black text-slate-800 mb-6 px-2 flex items-center">
+                    <i class="fas fa-list-ul mr-3 text-emerald-500"></i>詳細合作紀錄
+                </h3>
+                <div class="overflow-hidden rounded-[2rem] border border-slate-100 shadow-sm">
+                    <table class="w-full text-lg text-left">
+                        <thead class="bg-slate-50 text-slate-400 font-black uppercase text-xs tracking-wider">
                             <tr>
-                                <th class="px-10 py-6">專案細節</th>
-                                <th class="px-10 py-6 text-right">報價</th>
-                                <th class="px-10 py-6 text-right">觀看數</th>
-                                <th class="px-10 py-6 text-right text-emerald-600">安裝數</th>
-                                <th class="px-10 py-6 text-right text-orange-600">總營收</th>
+                                <th class="px-8 py-5">日期 / 專案 / 切角</th>
+                                <th class="px-8 py-5 text-center">連結</th>
+                                <th class="px-8 py-5 text-right">報價</th>
+                                <th class="px-8 py-5 text-right">觀看數</th>
+                                <th class="px-8 py-5 text-right text-emerald-600">安裝數</th>
+                                <th class="px-8 py-5 text-right text-orange-600">營收</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-50">
+                        <tbody class="divide-y divide-slate-100">
                             <tr v-for="p in currentKOL.projects" :key="p.date" class="hover:bg-slate-50/80 transition-colors">
-                                <td class="px-10 py-10">
-                                    <div class="text-xs text-slate-400 font-black mb-1 font-mono uppercase tracking-widest">{{ p.date }}</div>
-                                    <div class="font-black text-slate-800 text-2xl mb-2">{{ p.name }}</div>
-                                    <div v-if="p.angle && p.angle !== '-'" class="inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-1.5 rounded-xl font-black text-xs">
-                                        <i class="fas fa-bullseye"></i> {{ p.angle }}
-                                    </div>
-                                    <div class="mt-4">
-                                        <a v-if="p.url" :href="p.url" target="_blank" class="text-blue-500 font-black text-sm border-b-2 border-blue-100 hover:border-blue-500 transition">查看作品 <i class="fas fa-external-link-alt ml-1"></i></a>
+                                <td class="px-8 py-6">
+                                    <div class="text-xs text-slate-400 mb-1 font-mono uppercase tracking-widest font-bold">{{ p.date }}</div>
+                                    <div class="font-bold text-slate-800 text-lg">{{ p.name }}</div>
+                                    <div v-if="p.angle && p.angle !== '-'" class="mt-2 inline-flex items-center gap-1 bg-blue-50 text-blue-600 px-3 py-1 rounded-lg text-xs font-black border border-blue-100">
+                                        <i class="fas fa-tag"></i> {{ p.angle }}
                                     </div>
                                 </td>
-                                <td class="px-10 py-10 text-right font-black text-slate-400 text-2xl font-mono">${{ formatNumber(p.cost) }}</td>
-                                <td class="px-10 py-10 text-right font-black text-slate-400 text-2xl font-mono">{{ formatNumber(p.views) }}</td>
-                                <td class="px-10 py-10 text-right font-black text-emerald-600 text-3xl font-mono">{{ formatNumber(p.installs) }}</td>
-                                <td class="px-10 py-10 text-right font-black text-orange-600 text-3xl font-mono">${{ formatNumber(p.revenue) }}</td>
+                                <td class="px-8 py-6 text-center">
+                                    <a v-if="p.url" :href="p.url" target="_blank" class="w-10 h-10 rounded-xl bg-slate-100 text-blue-600 flex items-center justify-center mx-auto hover:bg-blue-100 transition shadow-sm border border-slate-200"><i class="fas fa-external-link-alt text-sm"></i></a>
+                                    <span v-else class="text-slate-300">-</span>
+                                </td>
+                                <td class="px-8 py-6 text-right font-mono font-bold text-slate-500">${{ formatNumber(p.cost) }}</td>
+                                <td class="px-8 py-6 text-right font-mono font-bold text-slate-500">{{ formatNumber(p.views) }}</td>
+                                <td class="px-8 py-6 text-right font-mono font-black text-emerald-600 text-xl">{{ formatNumber(p.installs) }}</td>
+                                <td class="px-8 py-6 text-right font-mono font-black text-orange-600 text-xl">${{ formatNumber(p.revenue) }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -242,7 +257,7 @@
         data() {
             return {
                 inputSheetId: '',
-                savedId: localStorage.getItem('kol_master_id_v5') || '',
+                savedId: localStorage.getItem('kol_pro_id') || '',
                 kols: [],
                 loading: false,
                 errorMsg: '',
@@ -257,12 +272,11 @@
         },
         computed: {
             filteredList() {
-                const s = this.searchQuery.toLowerCase();
-                return this.kols.filter(k => 
-                    k.name.toLowerCase().includes(s) || 
-                    k.category.toLowerCase().includes(s) ||
-                    k.projects.some(p => p.name.toLowerCase().includes(s) || p.angle.toLowerCase().includes(s))
-                );
+                return this.kols.filter(kol => {
+                    const s = this.searchQuery.toLowerCase();
+                    return kol.name.toLowerCase().includes(s) || 
+                           kol.projects.some(p => p.name.toLowerCase().includes(s) || p.angle.toLowerCase().includes(s));
+                });
             }
         },
         methods: {
@@ -271,13 +285,13 @@
                 const match = id.match(/\/d\/([a-zA-Z0-9-_]+)/);
                 if (match) id = match[1];
                 if (id.length < 10) { alert("ID 格式不正確"); return; }
-                localStorage.setItem('kol_master_id_v5', id);
+                localStorage.setItem('kol_pro_id', id);
                 this.savedId = id;
                 this.fetchData();
             },
             resetSettings() {
-                if(confirm('確定要重新設定資料庫 ID 嗎？')) {
-                    localStorage.removeItem('kol_master_id_v5');
+                if(confirm('確定要重新設定資料來源嗎？')) {
+                    localStorage.removeItem('kol_pro_id');
                     this.savedId = '';
                     this.kols = [];
                 }
@@ -286,27 +300,25 @@
                 this.loading = true;
                 this.errorMsg = '';
                 
-                // 核心改變：使用 gviz API 通道，資料結構更穩定
+                // 使用 GVIZ + AllOrigins (最穩定的組合)
                 const url = `https://docs.google.com/spreadsheets/d/${this.savedId}/gviz/tq?tqx=out:csv&tq=`;
-                const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
 
                 try {
-                    const response = await fetch(proxy);
-                    if (!response.ok) throw new Error("連線 Proxy 失敗");
-                    const text = await response.text();
+                    const response = await fetch(proxyUrl);
+                    if (!response.ok) throw new Error("連線失敗，請檢查網路或 Proxy 狀態。");
                     
-                    if (text.trim().startsWith('<') || text.includes('<!DOCTYPE html>')) {
-                        throw new Error("Google 回傳了錯誤頁面。請確認您的 Google Sheet 右上角「共用」已設為「知道連結的人均可檢視」。");
-                    }
+                    const text = await response.text();
+                    if (text.trim().startsWith('<')) throw new Error("讀取到網頁原始碼，請確認 Google Sheet 權限已公開。");
 
                     Papa.parse(text, {
                         header: false,
                         skipEmptyLines: 'greedy',
                         complete: (results) => {
-                            if (results.data && results.data.length > 1) {
+                            if (results.data.length > 1) {
                                 this.processSmartData(results.data);
                             } else {
-                                this.errorMsg = "讀取到的 CSV 為空，請確認分頁內容。";
+                                this.errorMsg = "CSV 為空";
                             }
                             this.loading = false;
                         }
@@ -321,25 +333,25 @@
                 const dataRows = rows.slice(1);
                 const findIdx = (kws) => headers.findIndex(h => kws.some(k => h.includes(k)));
 
-                // 智慧對應標題
                 const idx = {
                     name: findIdx(['名稱', 'name', '網紅']),
                     platform: findIdx(['平台', 'platform']),
                     link: findIdx(['連結', 'link']),
-                    followers: findIdx(['追蹤', '粉絲', 'follow']),
+                    followers: findIdx(['追蹤', '粉絲']),
                     category: findIdx(['類型', 'category']),
                     project: findIdx(['專案', 'project']),
-                    angle: findIdx(['切角', 'angle', 'hook']),
-                    date: findIdx(['日期', 'date', '時間']),
-                    url: findIdx(['影片', '貼文', '成品網址', 'url']),
-                    cost: findIdx(['成本', '報價', 'cost', 'price']),
-                    views: findIdx(['觀看', 'view', '觸及']),
-                    installs: findIdx(['安裝', 'install', '下載']),
-                    revenue: findIdx(['營收', 'revenue', 'income'])
+                    angle: findIdx(['切角', 'angle']),
+                    date: findIdx(['日期', 'date']),
+                    url: findIdx(['影片', '貼文', 'url']),
+                    cost: findIdx(['成本', '報價', 'cost']),
+                    views: findIdx(['觀看', 'view']),
+                    installs: findIdx(['安裝', 'install']),
+                    revenue: findIdx(['營收', 'revenue'])
                 };
 
                 if (idx.name === -1) {
-                    this.errorMsg = "找不到『名稱』欄位，請檢查標題列文字。";
+                    this.errorMsg = "無法對應欄位，請檢查標題列是否包含「名稱」等關鍵字。";
+                    this.loading = false;
                     return;
                 }
 
@@ -348,6 +360,7 @@
                     const name = String(row[idx.name] || '').trim();
                     if (!name) return;
 
+                    // 智慧數字清洗
                     const cleanNum = (v) => {
                         if (!v) return 0;
                         const n = parseFloat(String(v).replace(/[^0-9.-]/g, ''));
@@ -368,10 +381,10 @@
                     if (!kolMap[name]) {
                         kolMap[name] = {
                             name,
-                            platform: row[idx.platform] || '其他',
+                            platform: row[idx.platform] || 'Other',
                             link: row[idx.link] || '#',
                             latestFollowers: cleanNum(row[idx.followers]),
-                            category: row[idx.category] || '未分類',
+                            category: row[idx.category] || 'General',
                             projects: [project]
                         };
                     } else {
@@ -382,7 +395,6 @@
                     }
                 });
                 
-                // 排序：按最近一次合作日期排
                 this.kols = Object.values(kolMap).sort((a,b) => 
                     new Date(b.projects[0].date) - new Date(a.projects[0].date)
                 );
@@ -390,19 +402,23 @@
             formatNumber(num) { return new Intl.NumberFormat().format(num); },
             calculateTotal(projs, field) { return projs.reduce((s, p) => s + (p[field]||0), 0); },
             calculateAverage(projs, field) { return projs.length ? Math.round(this.calculateTotal(projs, field)/projs.length) : 0; },
-            calculateCPI(k) { 
-                const c = this.calculateTotal(k.projects, 'cost');
-                const i = this.calculateTotal(k.projects, 'installs');
+            calculateCPI(kol) { 
+                const c = this.calculateTotal(kol.projects, 'cost');
+                const i = this.calculateTotal(kol.projects, 'installs');
                 return i > 0 ? (c/i).toFixed(1) : 0;
             },
-            calculateROAS(k) {
-                const c = this.calculateTotal(k.projects, 'cost');
-                const r = this.calculateTotal(k.projects, 'revenue');
+            calculateROAS(kol) {
+                const c = this.calculateTotal(kol.projects, 'cost');
+                const r = this.calculateTotal(kol.projects, 'revenue');
                 return c > 0 ? Math.round((r/c)*100) : 0;
             },
             getPlatformIcon(p) {
-                const iconMap = { 'youtube': 'fab fa-youtube', 'facebook': 'fab fa-facebook', 'instagram': 'fab fa-instagram', 'twitch': 'fab fa-twitch' };
-                return iconMap[(p || '').toLowerCase()] || 'fas fa-user-circle';
+                p = (p || '').toLowerCase();
+                if(p.includes('youtube')) return 'fab fa-youtube text-red-600';
+                if(p.includes('facebook')) return 'fab fa-facebook text-blue-600';
+                if(p.includes('instagram')) return 'fab fa-instagram text-pink-600';
+                if(p.includes('twitch')) return 'fab fa-twitch text-purple-600';
+                return 'fas fa-link text-slate-300';
             },
             openDetails(kol) {
                 this.currentKOL = kol;
@@ -418,22 +434,29 @@
                 if(this.chartInstance) this.chartInstance.destroy();
                 
                 const data = [...this.currentKOL.projects].sort((a,b) => new Date(a.date) - new Date(b.date));
-                const colors = { revenue: '#ea580c', installs: '#10b981', views: '#3b82f6', cost: '#64748b' };
+                const colors = { revenue: '#ea580c', installs: '#10b981', views: '#eab308', cost: '#64748b', cpi: '#06b6d4', roas: '#6366f1' };
                 
+                // 計算動態數據 (CPI/ROAS 需即時算)
+                const chartData = data.map(d => {
+                    if (this.activeMetric === 'cpi') return d.installs > 0 ? (d.cost/d.installs).toFixed(2) : 0;
+                    if (this.activeMetric === 'roas') return d.cost > 0 ? ((d.revenue/d.cost)*100).toFixed(0) : 0;
+                    return d[this.activeMetric];
+                });
+
                 this.chartInstance = new Chart(ctx, {
                     type: 'line',
                     data: {
                         labels: data.map(d => d.date),
                         datasets: [{
                             label: this.activeMetric.toUpperCase(),
-                            data: data.map(d => d[this.activeMetric]),
+                            data: chartData,
                             borderColor: colors[this.activeMetric],
-                            backgroundColor: colors[this.activeMetric] + '15',
+                            backgroundColor: colors[this.activeMetric] + '20',
                             fill: true,
                             tension: 0.4,
-                            pointRadius: 8,
-                            pointHoverRadius: 12,
-                            borderWidth: 4
+                            pointRadius: 6,
+                            pointHoverRadius: 10,
+                            borderWidth: 3
                         }]
                     },
                     options: { 
@@ -448,5 +471,4 @@
     }).mount('#app');
 </script>
 </body>
-
 </html>
