@@ -14,7 +14,6 @@
     <style>
         body { font-family: 'Microsoft JhengHei', sans-serif; background-color: #f8fafc; }
         .modal-bg { background-color: rgba(15, 23, 42, 0.9); backdrop-filter: blur(5px); }
-        /* v-cloak 確保 Vue 沒啟動前不會看到 {{ }} */
         [v-cloak] { display: none !important; }
         .loader {
             border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%;
@@ -28,12 +27,12 @@
 <div id="app" v-cloak>
     <nav class="bg-slate-900 text-white p-5 shadow-xl sticky top-0 z-50">
         <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-xl md:text-2xl font-black tracking-wider">
+            <h1 class="text-xl md:text-2xl font-black tracking-wider flex items-center">
                 <i class="fas fa-chart-line text-blue-400 mr-3"></i>行銷2_KOL成效資料庫
             </h1>
             <div class="flex gap-3">
-                <button v-if="savedId" @click="resetSettings" class="text-xs bg-slate-800 px-3 py-2 rounded">設定</button>
-                <button v-if="savedId" @click="fetchData" class="bg-blue-600 px-5 py-2 rounded text-sm font-bold shadow-lg" :disabled="loading">
+                <button v-if="savedId" @click="resetSettings" class="text-xs bg-slate-800 px-3 py-2 rounded border border-slate-700 hover:bg-slate-700 transition">設定</button>
+                <button v-if="savedId" @click="fetchData" class="bg-blue-600 px-5 py-2 rounded text-sm font-bold shadow-lg hover:bg-blue-500 transition" :disabled="loading">
                     {{ loading ? '同步中...' : '同步資料' }}
                 </button>
             </div>
@@ -41,28 +40,36 @@
     </nav>
 
     <div v-if="errorMsg" class="container mx-auto mt-6 p-6 bg-red-50 border-l-4 border-red-500 text-red-700 rounded shadow">
-        <h3 class="font-bold">資料讀取異常</h3>
+        <h3 class="font-bold"><i class="fas fa-exclamation-circle mr-2"></i>資料讀取異常</h3>
         <p class="mt-1">{{ errorMsg }}</p>
-        <button @click="resetSettings" class="mt-4 text-xs underline">重置 ID</button>
+        <button @click="resetSettings" class="mt-4 text-xs underline font-bold">重置 ID 並重試</button>
     </div>
 
     <div v-if="!savedId" class="min-h-[80vh] flex items-center justify-center p-6">
         <div class="bg-white rounded-[2rem] shadow-2xl p-10 max-w-xl w-full text-center border">
             <h2 class="text-3xl font-black text-slate-800 mb-4">連結資料庫</h2>
-            <input v-model="inputSheetId" type="text" placeholder="輸入 Google Sheet ID" class="w-full p-4 bg-slate-50 border-2 rounded-xl mb-4 text-lg outline-none focus:border-blue-500">
-            <button @click="saveIdAndLoad" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black text-xl hover:bg-blue-700 transition">啟動資料庫</button>
+            <p class="text-slate-500 mb-6">請輸入 Google Sheet ID 以開始分析</p>
+            <input v-model="inputSheetId" type="text" placeholder="例如: 1A2B3C..." class="w-full p-4 bg-slate-50 border-2 rounded-xl mb-4 text-lg outline-none focus:border-blue-500 transition">
+            <button @click="saveIdAndLoad" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black text-xl hover:bg-blue-700 transition transform active:scale-95">啟動資料庫</button>
         </div>
     </div>
 
     <div class="container mx-auto p-4 md:p-8" v-if="savedId && !errorMsg">
-        <div class="bg-white p-6 rounded-3xl shadow-sm mb-8 flex flex-wrap gap-6 items-center border">
-            <input v-model="searchQuery" type="text" placeholder="搜尋網紅或專案..." class="flex-1 p-4 bg-slate-50 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+        <div class="bg-white p-6 rounded-3xl shadow-sm mb-8 flex flex-wrap gap-6 items-center border border-slate-100">
+            <div class="flex-1 min-w-[300px]">
+                <label class="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">快速搜尋</label>
+                <input v-model="searchQuery" type="text" placeholder="搜尋網紅、專案或平台..." class="w-full p-4 bg-slate-50 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition">
+            </div>
+            <div class="text-center px-4">
+                <div class="text-xs text-slate-400 font-bold uppercase mb-1">資料筆數</div>
+                <div class="text-2xl font-black text-slate-800">{{ filteredList.length }}</div>
+            </div>
         </div>
 
         <div class="bg-white rounded-[2rem] shadow-xl overflow-hidden border min-h-[400px]">
-            <div v-if="loading" class="py-40 text-center"><div class="loader"></div></div>
+            <div v-if="loading" class="py-40 text-center"><div class="loader"></div><p class="text-slate-400 mt-4 font-bold">正在分析數據...</p></div>
             <table v-else class="w-full text-left">
-                <thead class="bg-slate-50 text-slate-500 text-xs font-black border-b uppercase">
+                <thead class="bg-slate-50 text-slate-500 text-xs font-black border-b uppercase tracking-widest">
                     <tr>
                         <th class="px-10 py-5">網紅名稱</th>
                         <th class="px-10 py-5">最新平台 / 日期</th>
@@ -71,19 +78,19 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y text-base">
-                    <tr v-for="kol in filteredList" :key="kol.name" class="hover:bg-blue-50/50 transition">
+                    <tr v-for="kol in filteredList" :key="kol.name" class="hover:bg-blue-50/40 transition">
                         <td class="px-10 py-6">
                             <div class="font-bold text-slate-800 text-xl">{{ kol.name }}</div>
                             <span class="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded inline-block mt-1 font-bold">{{ kol.category }}</span>
                         </td>
                         <td class="px-10 py-6">
                             <div class="text-slate-700 font-bold">{{ kol.platform }}</div>
-                            <div class="text-xs text-slate-400 font-mono">最近更新: {{ kol.projects[0].date }}</div>
+                            <div class="text-xs text-slate-400 font-mono mt-1">更新: {{ kol.projects[0].date }}</div>
                         </td>
                         <td class="px-10 py-6 text-right font-black text-orange-600 text-xl">${{ formatNumber(calculateTotal(kol.projects, 'revenue')) }}</td>
                         <td class="px-10 py-6 text-center">
-                            <button @click="openDetails(kol)" class="w-12 h-12 rounded-xl bg-white border border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white transition flex items-center justify-center">
-                                <i class="fas fa-chart-line text-lg"></i>
+                            <button @click="openDetails(kol)" class="w-12 h-12 rounded-xl bg-white border border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white transition flex items-center justify-center shadow-sm">
+                                <i class="fas fa-chart-pie text-lg"></i>
                             </button>
                         </td>
                     </tr>
@@ -95,41 +102,92 @@
     <div v-if="currentKOL" class="fixed inset-0 modal-bg flex items-center justify-center z-[100] p-4 lg:p-8" @click.self="closeDetails">
         <div class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
             <div class="p-8 border-b flex justify-between items-center bg-slate-50">
-                <div>
-                    <h2 class="text-3xl font-black text-slate-800">{{ currentKOL.name }}</h2>
-                    <p class="text-sm text-slate-400 font-bold">最近更新日期：{{ currentKOL.projects[0].date }}</p>
+                <div class="flex items-center gap-6">
+                    <div class="w-16 h-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-3xl font-black shadow-lg">
+                        {{ currentKOL.name.charAt(0) }}
+                    </div>
+                    <div>
+                        <h2 class="text-3xl font-black text-slate-800">{{ currentKOL.name }}</h2>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-sm text-slate-400 font-bold"><i class="far fa-clock mr-1"></i>更新: {{ currentKOL.projects[0].date }}</span>
+                        </div>
+                    </div>
                 </div>
-                <button @click="closeDetails" class="text-4xl text-slate-300 hover:text-rose-500">&times;</button>
+                <button @click="closeDetails" class="w-10 h-10 rounded-full hover:bg-rose-50 text-slate-300 hover:text-rose-500 transition text-2xl flex items-center justify-center">&times;</button>
             </div>
             
-            <div class="p-8 overflow-y-auto">
-                <div class="mb-10 bg-slate-50 rounded-[2rem] p-8 border">
-                    <div class="h-[300px] w-full"><canvas id="trendChart"></canvas></div>
+            <div class="p-8 overflow-y-auto bg-white">
+                
+                <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                    <div class="p-4 bg-slate-50 rounded-2xl border text-center">
+                        <div class="text-xs text-slate-400 font-bold uppercase">總成本</div>
+                        <div class="text-xl font-black text-slate-700">${{ formatNumber(calculateTotal(currentKOL.projects, 'cost')) }}</div>
+                    </div>
+                    <div class="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 text-center">
+                        <div class="text-xs text-emerald-600 font-bold uppercase">總安裝</div>
+                        <div class="text-xl font-black text-emerald-700">{{ formatNumber(calculateTotal(currentKOL.projects, 'installs')) }}</div>
+                    </div>
+                    <div class="p-4 bg-orange-50 rounded-2xl border border-orange-100 text-center">
+                        <div class="text-xs text-orange-600 font-bold uppercase">總營收</div>
+                        <div class="text-xl font-black text-orange-700">${{ formatNumber(calculateTotal(currentKOL.projects, 'revenue')) }}</div>
+                    </div>
+                    <div class="p-4 bg-indigo-50 rounded-2xl border border-indigo-100 text-center">
+                        <div class="text-xs text-indigo-600 font-bold uppercase">平均 ROAS</div>
+                        <div class="text-xl font-black text-indigo-700">{{ calculateROAS(currentKOL) }}%</div>
+                    </div>
+                    <div class="p-4 bg-cyan-50 rounded-2xl border border-cyan-100 text-center">
+                        <div class="text-xs text-cyan-600 font-bold uppercase">平均 CPI</div>
+                        <div class="text-xl font-black text-cyan-700">${{ calculateCPI(currentKOL) }}</div>
+                    </div>
                 </div>
 
-                <h3 class="text-xl font-black mb-6 flex items-center"><i class="fas fa-list mr-2"></i>詳細合作紀錄</h3>
+                <div class="mb-10 bg-white border-2 border-slate-50 rounded-[2rem] p-8 shadow-sm">
+                    <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+                        <h3 class="text-xl font-black text-slate-800 flex items-center">
+                            <i class="fas fa-chart-area mr-3 text-blue-500"></i>成效趨勢分析
+                        </h3>
+                        <div class="flex bg-slate-100 p-1.5 rounded-2xl gap-1 overflow-x-auto">
+                            <button v-for="m in ['revenue', 'installs', 'views', 'cpi', 'roas']" :key="m" 
+                                @click="updateChart(m)" 
+                                :class="['px-4 py-2 text-xs rounded-xl font-black uppercase transition whitespace-nowrap', activeMetric === m ? 'bg-white text-blue-600 shadow-md transform scale-105' : 'text-slate-400 hover:text-slate-600']">
+                                {{ m }}
+                            </button>
+                        </div>
+                    </div>
+                    <div class="h-[350px] w-full"><canvas id="trendChart"></canvas></div>
+                </div>
+
+                <h3 class="text-xl font-black mb-6 flex items-center px-2"><i class="fas fa-list-ul mr-3 text-emerald-500"></i>詳細合作紀錄</h3>
                 <div class="border rounded-[2rem] overflow-hidden shadow-sm">
                     <table class="w-full text-left">
-                        <thead class="bg-slate-50 text-slate-400 font-black text-xs">
+                        <thead class="bg-slate-50 text-slate-400 font-black text-xs uppercase tracking-wider">
                             <tr>
                                 <th class="px-8 py-5">日期 / 專案 / 平台</th>
-                                <th class="px-8 py-5 text-center">成品連結</th>
-                                <th class="px-8 py-5 text-right">營收</th>
+                                <th class="px-8 py-5 text-center">連結</th>
+                                <th class="px-8 py-5 text-right">報價</th>
+                                <th class="px-8 py-5 text-right">觀看數</th>
+                                <th class="px-8 py-5 text-right">安裝</th>
+                                <th class="px-8 py-5 text-right text-orange-600">營收</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y text-[11pt]"> <tr v-for="p in currentKOL.projects" :key="p.date+p.name" class="hover:bg-slate-50/80">
+                        <tbody class="divide-y text-[11pt]">
+                            <tr v-for="p in currentKOL.projects" :key="p.date+p.name" class="hover:bg-slate-50/80 transition">
                                 <td class="px-8 py-6">
                                     <div class="text-sm text-slate-400 font-mono font-bold">{{ p.date }}</div>
                                     <div class="font-bold text-slate-800 text-lg">
-                                        {{ p.name }} <span class="text-slate-400 text-sm font-normal">({{ p.platform }})</span> </div>
+                                        {{ p.name }} <span class="text-slate-400 text-sm font-normal">({{ p.platform }})</span>
+                                    </div>
                                     <div v-if="p.angle !== '-'" class="mt-2 inline-block bg-blue-50 text-blue-600 px-3 py-1 rounded-lg text-xs font-black"># {{ p.angle }}</div>
                                 </td>
                                 <td class="px-8 py-6 text-center">
-                                    <a v-if="p.url" :href="p.url" target="_blank" class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto hover:bg-blue-600 hover:text-white transition">
+                                    <a v-if="p.url" :href="p.url" target="_blank" class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto hover:bg-blue-600 hover:text-white transition shadow-sm border border-blue-100">
                                         <i class="fas fa-external-link-alt text-sm"></i>
                                     </a>
                                     <span v-else class="text-slate-300">-</span>
                                 </td>
+                                <td class="px-8 py-6 text-right font-mono font-bold text-slate-500">${{ formatNumber(p.cost) }}</td>
+                                <td class="px-8 py-6 text-right font-mono font-bold text-slate-500">{{ formatNumber(p.views) }}</td>
+                                <td class="px-8 py-6 text-right font-mono font-bold text-emerald-600">{{ formatNumber(p.installs) }}</td>
                                 <td class="px-8 py-6 text-right font-mono font-black text-orange-600 text-xl">${{ formatNumber(p.revenue) }}</td>
                             </tr>
                         </tbody>
@@ -141,7 +199,6 @@
 </div>
 
 <script>
-    // 使用全域變數啟動，避免解構賦值失敗
     const app = Vue.createApp({
         data() {
             return {
@@ -152,6 +209,7 @@
                 errorMsg: '',
                 searchQuery: '',
                 currentKOL: null,
+                activeMetric: 'revenue', // 預設指標
                 chartInstance: null
             }
         },
@@ -215,12 +273,16 @@
                 const headers = rows[0].map(h => String(h || '').trim().toLowerCase());
                 const findIdx = (kws) => headers.findIndex(h => kws.some(k => h.includes(k)));
 
+                // 重新加入所有指標的欄位對應
                 const idx = {
                     name: findIdx(['名稱', 'name', '網紅']),
                     platform: findIdx(['平台', 'platform']),
                     date: findIdx(['日期', 'date']),
                     project: findIdx(['專案', 'project']),
                     url: findIdx(['連結', '成品', 'url', '影片']),
+                    cost: findIdx(['成本', '報價', 'cost']),
+                    views: findIdx(['觀看', 'view']),
+                    installs: findIdx(['安裝', 'install']),
                     revenue: findIdx(['營收', 'revenue']),
                     category: findIdx(['類型', 'category']),
                     angle: findIdx(['切角', 'angle'])
@@ -230,12 +292,19 @@
                 rows.slice(1).forEach(row => {
                     const name = String(row[idx.name] || '').trim();
                     if (!name) return;
+                    
+                    // 抓取並清理所有數值
+                    const cleanNum = (val) => parseFloat(String(val || 0).replace(/[^0-9.]/g, '')) || 0;
+
                     const project = {
                         name: row[idx.project] || '未命名',
                         date: row[idx.date] || '2026-01-01',
                         platform: row[idx.platform] || '-',
                         url: row[idx.url] || '',
-                        revenue: parseFloat(String(row[idx.revenue] || 0).replace(/[^0-9.]/g, '')) || 0,
+                        cost: cleanNum(row[idx.cost]),
+                        views: cleanNum(row[idx.views]),
+                        installs: cleanNum(row[idx.installs]),
+                        revenue: cleanNum(row[idx.revenue]),
                         angle: idx.angle !== -1 ? (row[idx.angle] || '-') : '-'
                     };
                     if (!kolMap[name]) {
@@ -245,30 +314,85 @@
                 });
 
                 this.kols = Object.values(kolMap).map(k => {
-                    k.projects.sort((a, b) => new Date(b.date) - new Date(a.date)); // 修正1: 日期排序
+                    k.projects.sort((a, b) => new Date(b.date) - new Date(a.date));
                     return k;
                 }).sort((a, b) => new Date(b.projects[0].date) - new Date(a.projects[0].date));
             },
             formatNumber(num) { return new Intl.NumberFormat().format(num); },
             calculateTotal(ps, f) { return ps.reduce((s, p) => s + p[f], 0); },
+            calculateCPI(kol) { 
+                const c = this.calculateTotal(kol.projects, 'cost');
+                const i = this.calculateTotal(kol.projects, 'installs');
+                return i > 0 ? (c/i).toFixed(1) : 0;
+            },
+            calculateROAS(kol) {
+                const c = this.calculateTotal(kol.projects, 'cost');
+                const r = this.calculateTotal(kol.projects, 'revenue');
+                return c > 0 ? Math.round((r/c)*100) : 0;
+            },
             openDetails(kol) {
                 this.currentKOL = kol;
-                this.$nextTick(() => {
-                    const ctx = document.getElementById('trendChart').getContext('2d');
-                    const sortedData = [...this.currentKOL.projects].sort((a, b) => new Date(a.date) - new Date(b.date));
-                    this.chartInstance = Vue.markRaw(new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: sortedData.map(d => d.date),
-                            datasets: [{ label: '營收', data: sortedData.map(d => d.revenue), borderColor: '#3b82f6', tension: 0.4 }]
-                        },
-                        options: { responsive: true, maintainAspectRatio: false }
-                    }));
-                });
+                this.activeMetric = 'revenue'; // 重置為預設指標
+                this.$nextTick(() => this.renderChart());
             },
             closeDetails() {
                 this.currentKOL = null;
                 if (this.chartInstance) { this.chartInstance.destroy(); this.chartInstance = null; }
+            },
+            updateChart(metric) {
+                this.activeMetric = metric;
+                this.renderChart();
+            },
+            renderChart() {
+                const ctx = document.getElementById('trendChart');
+                if(!ctx) return;
+                
+                // 趨勢圖資料排序：舊 -> 新
+                const sortedData = [...this.currentKOL.projects].sort((a, b) => new Date(a.date) - new Date(b.date));
+                const colors = { revenue: '#ea580c', installs: '#10b981', views: '#3b82f6', cost: '#64748b', cpi: '#06b6d4', roas: '#6366f1' };
+
+                // 計算數據
+                const chartData = sortedData.map(d => {
+                    let val = 0;
+                    if (this.activeMetric === 'cpi') val = d.installs > 0 ? d.cost / d.installs : 0;
+                    else if (this.activeMetric === 'roas') val = d.cost > 0 ? (d.revenue / d.cost) * 100 : 0;
+                    else val = d[this.activeMetric];
+                    return parseFloat(Number(val).toFixed(2));
+                });
+
+                if (this.chartInstance) {
+                    // 更新模式
+                    this.chartInstance.data.labels = sortedData.map(d => d.date);
+                    this.chartInstance.data.datasets[0].data = chartData;
+                    this.chartInstance.data.datasets[0].label = this.activeMetric.toUpperCase();
+                    this.chartInstance.data.datasets[0].borderColor = colors[this.activeMetric];
+                    this.chartInstance.data.datasets[0].backgroundColor = colors[this.activeMetric] + '15';
+                    this.chartInstance.update();
+                } else {
+                    // 創建模式
+                    this.chartInstance = Vue.markRaw(new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: sortedData.map(d => d.date),
+                            datasets: [{ 
+                                label: this.activeMetric.toUpperCase(), 
+                                data: chartData, 
+                                borderColor: colors[this.activeMetric], 
+                                backgroundColor: colors[this.activeMetric] + '15',
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 6,
+                                borderWidth: 3
+                            }]
+                        },
+                        options: { 
+                            responsive: true, 
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }
+                        }
+                    }));
+                }
             }
         }
     }).mount('#app');
