@@ -15,8 +15,6 @@
         body { font-family: 'Microsoft JhengHei', sans-serif; background-color: #f8fafc; }
         .modal-bg { background-color: rgba(15, 23, 42, 0.9); backdrop-filter: blur(5px); }
         .text-kpi { font-size: 2rem; font-weight: 900; line-height: 1.2; }
-        /* 避免渲染完成前的空白，但若 Vue 掛掉時會顯示內容供除錯 */
-        [v-cloak] { display: none !important; }
         .loader {
             border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%;
             width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto;
@@ -26,241 +24,81 @@
 </head>
 <body>
 
-<div id="app" v-cloak>
+<div id="app">
     <nav class="bg-slate-900 text-white p-5 shadow-xl sticky top-0 z-50">
         <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-xl md:text-2xl font-black tracking-wider">
+            <h1 class="text-xl md:text-2xl font-black tracking-wider flex items-center">
                 <i class="fas fa-chart-line text-blue-400 mr-3"></i>行銷2_KOL成效資料庫
             </h1>
-            <div class="flex gap-3">
-                <button v-if="savedId" @click="resetSettings" class="text-xs bg-slate-800 px-3 py-2 rounded">設定</button>
-                <button v-if="savedId" @click="fetchData" class="bg-blue-600 px-5 py-2 rounded text-sm font-bold shadow-lg">同步資料</button>
+            <div class="flex items-center gap-3">
+                <button v-if="savedId" @click="resetSettings" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded transition border border-slate-600">設定</button>
+                <button v-if="savedId" @click="fetchData" class="bg-blue-600 hover:bg-blue-500 px-5 py-2 rounded text-sm font-bold shadow-lg flex items-center transition active:scale-95" :disabled="loading">
+                    <i :class="loading ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'" class="mr-2"></i>
+                    {{ loading ? '更新中' : '同步資料' }}
+                </button>
             </div>
         </div>
     </nav>
 
-    <div v-if="errorMsg" class="container mx-auto mt-6 p-6 bg-red-50 border-l-4 border-red-500 text-red-700 rounded shadow">
-        <h3 class="font-bold text-lg"><i class="fas fa-exclamation-circle mr-2"></i>系統提示</h3>
-        <p class="mt-1">{{ errorMsg }}</p>
-        <button @click="resetSettings" class="mt-4 text-xs underline">重置 ID 並重新輸入</button>
+    <div v-if="errorMsg" class="container mx-auto mt-6 p-6 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-xl shadow-lg">
+        <h3 class="font-bold text-lg"><i class="fas fa-exclamation-triangle mr-2"></i>資料讀取異常</h3>
+        <p class="mt-2 text-sm">{{ errorMsg }}</p>
+        <div class="mt-4 flex gap-4">
+            <button @click="resetSettings" class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm">重新輸入 ID</button>
+            <button @click="fetchData" class="bg-white border border-red-200 px-4 py-2 rounded-lg font-bold text-sm hover:bg-red-100">再試一次</button>
+        </div>
     </div>
 
     <div v-if="!savedId" class="min-h-[80vh] flex items-center justify-center p-6">
-        <div class="bg-white rounded-[2rem] shadow-2xl p-10 max-w-xl w-full text-center">
-            <h2 class="text-3xl font-black text-slate-800 mb-4">連結資料庫</h2>
-            <p class="text-slate-500 mb-8">請確保試算表已開啟「知道連結的任何人都可以查看」</p>
-            <input v-model="inputSheetId" type="text" placeholder="輸入 Google Sheet ID" class="w-full p-4 bg-slate-50 border-2 rounded-xl mb-4 text-lg">
-            <button @click="saveIdAndLoad" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black text-xl hover:bg-blue-700 transition">啟動資料庫</button>
+        <div class="bg-white rounded-[2rem] shadow-2xl p-10 max-w-xl w-full text-center border">
+            <h2 class="text-3xl font-black text-slate-800 mb-2">連結資料庫</h2>
+            <p class="text-slate-500 mb-8">請輸入您的 Google Sheet ID</p>
+            <input v-model="inputSheetId" type="text" placeholder="例如: 1A2B3C..." class="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-blue-500 outline-none text-lg transition shadow-sm mb-4">
+            <button @click="saveIdAndLoad" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black hover:bg-blue-700 shadow-xl text-xl transition">啟動分析</button>
         </div>
     </div>
 
     <div class="container mx-auto p-4 md:p-8" v-if="savedId && !errorMsg">
-        <div class="bg-white p-6 rounded-3xl shadow-sm mb-8 flex flex-wrap gap-6 items-center border">
+        <div class="bg-white p-6 rounded-3xl shadow-sm mb-8 border border-slate-100 flex flex-wrap gap-6 items-end">
             <div class="flex-1 min-w-[300px]">
-                <input v-model="searchQuery" type="text" placeholder="搜尋網紅、專案、平台..." class="w-full p-4 bg-slate-50 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-lg">
+                <label class="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">快速搜尋網紅 / 專案 / 平台</label>
+                <input v-model="searchQuery" type="text" placeholder="輸入關鍵字..." class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-lg outline-none focus:ring-2 focus:ring-blue-500 transition">
             </div>
-            <div class="flex gap-8 px-4">
+            <div class="w-full md:w-auto flex gap-8 px-4">
                 <div class="text-center">
-                    <div class="text-xs text-slate-400 font-bold uppercase">總網紅數</div>
+                    <div class="text-xs text-slate-400 font-bold uppercase mb-1">網紅總數</div>
                     <div class="text-2xl font-black text-slate-800">{{ filteredList.length }}</div>
                 </div>
             </div>
         </div>
 
-        <div class="bg-white rounded-[2rem] shadow-xl overflow-hidden border">
-            <div v-if="loading" class="py-40 text-center"><div class="loader"></div><p class="text-slate-400 mt-4">正在獲取最新數據...</p></div>
-            <table v-else class="w-full text-left">
-                <thead class="bg-slate-50 text-slate-500 text-xs font-black uppercase tracking-widest border-b">
-                    <tr>
-                        <th class="px-10 py-5">網紅名稱</th>
-                        <th class="px-10 py-5">最新平台/日期</th>
-                        <th class="px-10 py-5 text-right">總營收</th>
-                        <th class="px-10 py-5 text-center">成效分析</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y text-base">
-                    <tr v-for="kol in filteredList" :key="kol.name" class="hover:bg-blue-50/50 transition">
-                        <td class="px-10 py-6">
-                            <div class="font-bold text-slate-800 text-xl">{{ kol.name }}</div>
-                            <span class="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded mt-1 inline-block font-bold">{{ kol.category }}</span>
-                        </td>
-                        <td class="px-10 py-6">
-                            <div class="text-slate-700 font-bold">{{ kol.platform }}</div>
-                            <div class="text-xs text-slate-400 font-mono">最近更新: {{ kol.projects[0].date }}</div>
-                        </td>
-                        <td class="px-10 py-6 text-right font-black text-orange-600 text-xl">${{ formatNumber(calculateTotal(kol.projects, 'revenue')) }}</td>
-                        <td class="px-10 py-6 text-center">
-                            <button @click="openDetails(kol)" class="w-12 h-12 rounded-2xl bg-white border-2 border-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white transition flex items-center justify-center shadow-sm">
-                                <i class="fas fa-chart-line text-lg"></i>
-                            </button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div v-if="currentKOL" class="fixed inset-0 modal-bg flex items-center justify-center z-[100] p-4 lg:p-8" @click.self="closeDetails">
-        <div class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
-            <div class="p-8 border-b flex justify-between items-center bg-slate-50/80">
-                <div class="flex items-center gap-6">
-                    <div class="w-16 h-16 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-3xl font-black">
-                        {{ currentKOL.name.charAt(0) }}
-                    </div>
-                    <div>
-                        <h2 class="text-3xl font-black text-slate-800">{{ currentKOL.name }}</h2>
-                        <div class="text-sm text-slate-400 font-bold mt-1">
-                            <i class="far fa-clock mr-1"></i> 最近更新日期：{{ currentKOL.projects[0].date }}
-                        </div>
-                    </div>
-                </div>
-                <button @click="closeDetails" class="w-12 h-12 rounded-full hover:bg-rose-50 text-slate-300 hover:text-rose-500 transition text-4xl">&times;</button>
+        <div class="bg-white rounded-[2rem] shadow-xl border border-slate-100 overflow-hidden min-h-[400px]">
+            <div v-if="loading" class="flex flex-col items-center justify-center py-40 text-slate-400">
+                <div class="loader"></div>
+                <p class="text-xl font-bold mt-4">正在同步最新資料...</p>
             </div>
-            
-            <div class="p-8 overflow-y-auto custom-scrollbar">
-                <div class="mb-10 bg-slate-50 rounded-[2rem] p-8 border border-slate-100">
-                    <h3 class="text-lg font-black text-slate-800 mb-6 flex items-center"><i class="fas fa-chart-area mr-2 text-blue-500"></i>成效趨勢圖</h3>
-                    <div class="h-[300px] w-full"><canvas id="trendChart"></canvas></div>
-                </div>
 
-                <h3 class="text-xl font-black text-slate-800 mb-6 flex items-center"><i class="fas fa-history mr-2 text-emerald-500"></i>詳細合作紀錄</h3>
-                <div class="border-2 border-slate-50 rounded-[2rem] overflow-hidden">
-                    <table class="w-full text-left">
-                        <thead class="bg-slate-50 text-slate-400 font-black text-xs uppercase">
-                            <tr>
-                                <th class="px-8 py-5">日期 / 專案 / 平台</th>
-                                <th class="px-8 py-5 text-center">成品連結</th>
-                                <th class="px-8 py-5 text-right">安裝數</th>
-                                <th class="px-8 py-5 text-right">營收</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y text-[11pt]"> <tr v-for="p in currentKOL.projects" :key="p.date+p.name" class="hover:bg-slate-50/80 transition">
-                                <td class="px-8 py-6">
-                                    <div class="text-sm text-slate-400 font-mono font-bold">{{ p.date }}</div>
-                                    <div class="font-bold text-slate-800 text-lg">{{ p.name }} <span class="text-slate-400 text-sm font-normal">({{ p.platform }})</span></div>
-                                    <div v-if="p.angle !== '-'" class="mt-2 inline-block bg-blue-50 text-blue-600 px-3 py-1 rounded-lg text-xs font-black"># {{ p.angle }}</div>
-                                </td>
-                                <td class="px-8 py-6 text-center">
-                                    <a v-if="p.url" :href="p.url" target="_blank" class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto hover:bg-blue-600 hover:text-white transition">
-                                        <i class="fas fa-external-link-alt text-sm"></i>
-                                    </a>
-                                    <span v-else class="text-slate-300">-</span>
-                                </td>
-                                <td class="px-8 py-6 text-right font-mono font-bold text-emerald-600">{{ formatNumber(p.installs) }}</td>
-                                <td class="px-8 py-6 text-right font-mono font-black text-orange-600 text-xl">${{ formatNumber(p.revenue) }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    const { createApp, markRaw } = Vue;
-
-    createApp({
-        data() {
-            return {
-                inputSheetId: '',
-                savedId: localStorage.getItem('kol_perfect_id') || '',
-                kols: [],
-                loading: false,
-                errorMsg: '',
-                searchQuery: '',
-                currentKOL: null,
-                chartInstance: null
-            }
-        },
-        mounted() {
-            if (this.savedId) this.fetchData();
-        },
-        computed: {
-            filteredList() {
-                const s = this.searchQuery.toLowerCase();
-                return this.kols.filter(k => 
-                    k.name.toLowerCase().includes(s) || 
-                    k.projects.some(p => p.name.toLowerCase().includes(s) || p.platform.toLowerCase().includes(s))
-                );
-            }
-        },
-        methods: {
-            saveIdAndLoad() {
-                let id = this.inputSheetId.trim();
-                const match = id.match(/\/d\/([a-zA-Z0-9-_]+)/);
-                if (match) id = match[1];
-                if (id) {
-                    localStorage.setItem('kol_perfect_id', id);
-                    this.savedId = id;
-                    this.fetchData();
-                } else {
-                    alert("請輸入有效的 ID");
-                }
-            },
-            resetSettings() {
-                if(confirm('確定要重新設定資料來源嗎？')) {
-                    localStorage.removeItem('kol_perfect_id');
-                    this.savedId = '';
-                    this.kols = [];
-                    this.errorMsg = '';
-                }
-            },
-            async fetchData() {
-                this.loading = true;
-                this.errorMsg = '';
-                // 確保讀取的是 CSV 格式
-                const url = `https://docs.google.com/spreadsheets/d/${this.savedId}/gviz/tq?tqx=out:csv&tq=`;
-                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-
-                try {
-                    const response = await fetch(proxyUrl);
-                    if (!response.ok) throw new Error("連線失敗，請檢查 Sheet ID 是否正確或網路狀態。");
-                    
-                    const text = await response.text();
-                    // 檢查是否抓到的是 HTML (代表權限未開或 ID 錯誤)
-                    if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
-                        throw new Error("權限錯誤：請確保 Google Sheet 已開啟「知道連結的任何人都可以查看」。");
-                    }
-
-                    Papa.parse(text, {
-                        header: false,
-                        skipEmptyLines: 'greedy',
-                        complete: (results) => {
-                            if (results.data.length <= 1) {
-                                this.errorMsg = "試算表內沒有有效的數據內容。";
-                            } else {
-                                this.processSmartData(results.data);
-                            }
-                            this.loading = false;
-                        },
-                        error: (err) => {
-                            this.errorMsg = "CSV 解析出錯：" + err.message;
-                            this.loading = false;
-                        }
-                    });
-                } catch (e) {
-                    this.errorMsg = e.message;
-                    this.loading = false;
-                }
-            },
-            processSmartData(rows) {
-                const headers = rows[0].map(h => String(h || '').trim().toLowerCase());
-                const findIdx = (kws) => headers.findIndex(h => kws.some(k => h.includes(k)));
-
-                const idx = {
-                    name: findIdx(['名稱', 'name', '網紅']),
-                    platform: findIdx(['平台', 'platform']),
-                    date: findIdx(['日期', 'date']),
-                    project: findIdx(['專案', 'project']),
-                    url: findIdx(['連結', '成品', 'url', '影片', '貼文']),
-                    installs: findIdx(['安裝', 'install']),
-                    revenue: findIdx(['營收', 'revenue']),
-                    category: findIdx(['類型', 'category']),
-                    angle: findIdx(['切角', 'angle'])
-                };
-
-                if (idx.name === -1) {
-                    this.errorMsg = "找不到『網紅名稱』欄位，請確認試算表第一列標題正確。";
-                    return;
-                }
+            <div v-else class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-black border-b border-slate-200">
+                        <tr>
+                            <th class="px-10 py-5">網紅名稱</th>
+                            <th class="px-10 py-5">最後平台 / 日期</th>
+                            <th class="px-10 py-5 text-right">總營收</th>
+                            <th class="px-10 py-5 text-center">成效詳情</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-base">
+                        <tr v-for="kol in filteredList" :key="kol.name" class="hover:bg-blue-50/40 transition">
+                            <td class="px-10 py-6">
+                                <div class="font-bold text-slate-800 text-xl">{{ kol.name }}</div>
+                                <span class="text-xs bg-slate-100 px-2 py-1 rounded inline-block mt-1 text-slate-500 font-bold uppercase">{{ kol.category }}</span>
+                            </td>
+                            <td class="px-10 py-6">
+                                <div class="font-bold text-slate-700">{{ kol.platform }}</div>
+                                <div class="text-xs text-slate-400 mt-1">最近更新: {{ kol.projects[0].date }}</div>
+                            </td>
+                            <td class="px-10 py-6 text-right font-black text-orange-600 text-xl">
+                                ${{ formatNumber(calculateTotal(kol.projects, 'revenue')) }}
+                            </td>
+                            <td class="px-10 py-6 text-center">
