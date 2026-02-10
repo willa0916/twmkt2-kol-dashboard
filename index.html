@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KOL 合作成效資料庫 - 穩定更新版</title>
+    <title>KOL 資料庫 - 完美流暢版</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
@@ -31,7 +31,7 @@
     <nav class="bg-slate-900 text-white p-5 shadow-xl sticky top-0 z-50">
         <div class="container mx-auto flex justify-between items-center">
             <h1 class="text-xl md:text-2xl font-black tracking-wider flex items-center">
-                <i class="fas fa-chart-line text-blue-400 mr-3"></i>KOL 資料庫 <span class="ml-2 text-xs bg-emerald-500 px-2 py-1 rounded">Stable v2</span>
+                <i class="fas fa-chart-line text-blue-400 mr-3"></i>KOL 資料庫 <span class="ml-2 text-xs bg-emerald-500 px-2 py-1 rounded">Perfect</span>
             </h1>
             <div class="flex items-center gap-3">
                 <button v-if="savedId" @click="resetSettings" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded transition border border-slate-600">
@@ -251,21 +251,25 @@
 </div>
 
 <script>
-    const { createApp } = Vue;
+    const { createApp, markRaw } = Vue; // 1. 引入 markRaw
 
     createApp({
         data() {
             return {
                 inputSheetId: '',
-                savedId: localStorage.getItem('kol_pro_id') || '',
+                savedId: localStorage.getItem('kol_perfect_id') || '',
                 kols: [],
                 loading: false,
                 errorMsg: '',
                 searchQuery: '',
                 currentKOL: null,
-                chartInstance: null, // 圖表實例
-                activeMetric: 'revenue'
+                activeMetric: 'revenue',
+                // 2. 注意：chartInstance 不放在這裡，移到 created
             }
+        },
+        created() {
+            // 3. 在這裡定義非響應式變數，Vue 不會監控它，解決無限迴圈問題
+            this.chartInstance = null;
         },
         mounted() {
             if (this.savedId) this.fetchData();
@@ -285,13 +289,13 @@
                 const match = id.match(/\/d\/([a-zA-Z0-9-_]+)/);
                 if (match) id = match[1];
                 if (id.length < 10) { alert("ID 格式不正確"); return; }
-                localStorage.setItem('kol_pro_id', id);
+                localStorage.setItem('kol_perfect_id', id);
                 this.savedId = id;
                 this.fetchData();
             },
             resetSettings() {
                 if(confirm('確定要重新設定資料來源嗎？')) {
-                    localStorage.removeItem('kol_pro_id');
+                    localStorage.removeItem('kol_perfect_id');
                     this.savedId = '';
                     this.kols = [];
                 }
@@ -421,12 +425,10 @@
             openDetails(kol) {
                 this.currentKOL = kol;
                 this.activeMetric = 'revenue';
-                // 使用 nextTick 確保 DOM 存在後再繪圖
                 this.$nextTick(() => this.renderChart());
             },
             closeDetails() { 
                 this.currentKOL = null; 
-                // 關閉時若有圖表實例則銷毀，確保下次開啟乾淨
                 if(this.chartInstance) {
                     this.chartInstance.destroy();
                     this.chartInstance = null;
@@ -441,11 +443,9 @@
                 if(!canvas) return;
                 const ctx = canvas.getContext('2d');
                 
-                // 準備數據
                 const data = [...this.currentKOL.projects].sort((a,b) => new Date(a.date) - new Date(b.date));
                 const colors = { revenue: '#ea580c', installs: '#10b981', views: '#3b82f6', cost: '#64748b', cpi: '#06b6d4', roas: '#6366f1' };
 
-                // 計算圖表數值
                 const chartData = data.map(d => {
                     let val = 0;
                     if (this.activeMetric === 'cpi') val = d.installs > 0 ? d.cost / d.installs : 0;
@@ -454,18 +454,17 @@
                     return parseFloat(Number(val).toFixed(2));
                 });
 
-                // ★★★ 關鍵修復：Update 模式 ★★★
-                // 如果圖表已存在，直接更新數據，不要 destroy (會崩潰)
                 if (this.chartInstance) {
+                    // Update 模式
                     this.chartInstance.data.labels = data.map(d => d.date);
                     this.chartInstance.data.datasets[0].data = chartData;
                     this.chartInstance.data.datasets[0].label = this.activeMetric.toUpperCase();
                     this.chartInstance.data.datasets[0].borderColor = colors[this.activeMetric];
                     this.chartInstance.data.datasets[0].backgroundColor = colors[this.activeMetric] + '15';
-                    this.chartInstance.update(); // 平滑更新
+                    this.chartInstance.update();
                 } else {
-                    // 如果圖表不存在 (第一次打開彈窗)，才 new 一個新的
-                    this.chartInstance = new Chart(ctx, {
+                    // Create 模式：4. 使用 markRaw 包裹圖表實例
+                    this.chartInstance = markRaw(new Chart(ctx, {
                         type: 'line',
                         data: {
                             labels: data.map(d => d.date),
@@ -476,8 +475,8 @@
                                 backgroundColor: colors[this.activeMetric] + '15',
                                 fill: true,
                                 tension: 0.4,
-                                pointRadius: 6,
-                                pointHoverRadius: 10,
+                                pointRadius: 8,
+                                pointHoverRadius: 12,
                                 borderWidth: 3
                             }]
                         },
@@ -487,7 +486,7 @@
                             plugins: { legend: { display: false } },
                             scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }
                         }
-                    });
+                    }));
                 }
             }
         }
