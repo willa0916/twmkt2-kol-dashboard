@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>行銷2_KOL成效資料庫</title>
+    <title>KOL 合作成效資料庫 - 圖表修復版</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
@@ -31,7 +31,7 @@
     <nav class="bg-slate-900 text-white p-5 shadow-xl sticky top-0 z-50">
         <div class="container mx-auto flex justify-between items-center">
             <h1 class="text-xl md:text-2xl font-black tracking-wider flex items-center">
-                <i class="fas fa-chart-line text-blue-400 mr-3"></i>行銷2_KOL成效資料庫<span class="ml-2 text-xs bg-blue-600 px-2 py-1 rounded">PRO</span>
+                <i class="fas fa-chart-line text-blue-400 mr-3"></i>KOL 資料庫 <span class="ml-2 text-xs bg-emerald-500 px-2 py-1 rounded">Stable</span>
             </h1>
             <div class="flex items-center gap-3">
                 <button v-if="savedId" @click="resetSettings" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded transition border border-slate-600">
@@ -360,7 +360,6 @@
                     const name = String(row[idx.name] || '').trim();
                     if (!name) return;
 
-                    // 智慧數字清洗
                     const cleanNum = (v) => {
                         if (!v) return 0;
                         const n = parseFloat(String(v).replace(/[^0-9.-]/g, ''));
@@ -434,13 +433,21 @@
                 if(this.chartInstance) this.chartInstance.destroy();
                 
                 const data = [...this.currentKOL.projects].sort((a,b) => new Date(a.date) - new Date(b.date));
-                const colors = { revenue: '#ea580c', installs: '#10b981', views: '#eab308', cost: '#64748b', cpi: '#06b6d4', roas: '#6366f1' };
+                const colors = { revenue: '#ea580c', installs: '#10b981', views: '#3b82f6', cost: '#64748b', cpi: '#06b6d4', roas: '#6366f1' };
                 
-                // 計算動態數據 (CPI/ROAS 需即時算)
+                // 數據防呆與轉型
                 const chartData = data.map(d => {
-                    if (this.activeMetric === 'cpi') return d.installs > 0 ? (d.cost/d.installs).toFixed(2) : 0;
-                    if (this.activeMetric === 'roas') return d.cost > 0 ? ((d.revenue/d.cost)*100).toFixed(0) : 0;
-                    return d[this.activeMetric];
+                    let val = 0;
+                    if (this.activeMetric === 'cpi') {
+                        // 防呆: 安裝數大於 0 才計算，避免除以 0
+                        val = d.installs > 0 ? d.cost / d.installs : 0;
+                    } else if (this.activeMetric === 'roas') {
+                        val = d.cost > 0 ? (d.revenue / d.cost) * 100 : 0;
+                    } else {
+                        val = d[this.activeMetric];
+                    }
+                    // 關鍵修復：強制轉型為浮點數，解決 Chart.js 讀到字串當機的問題
+                    return parseFloat(Number(val).toFixed(2));
                 });
 
                 this.chartInstance = new Chart(ctx, {
