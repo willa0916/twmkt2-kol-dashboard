@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KOL 資料庫 - 完美流暢版</title>
+    <title>行銷2_KOL成效資料庫</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
@@ -31,7 +31,7 @@
     <nav class="bg-slate-900 text-white p-5 shadow-xl sticky top-0 z-50">
         <div class="container mx-auto flex justify-between items-center">
             <h1 class="text-xl md:text-2xl font-black tracking-wider flex items-center">
-                <i class="fas fa-chart-line text-blue-400 mr-3"></i>KOL 資料庫 <span class="ml-2 text-xs bg-emerald-500 px-2 py-1 rounded">Perfect</span>
+                <i class="fas fa-chart-line text-blue-400 mr-3"></i>行銷2_KOL成效資料庫<span class="ml-2 text-xs bg-emerald-500 px-2 py-1 rounded">Perfect</span>
             </h1>
             <div class="flex items-center gap-3">
                 <button v-if="savedId" @click="resetSettings" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded transition border border-slate-600">
@@ -99,12 +99,12 @@
                 <table class="w-full text-left">
                     <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-black tracking-widest border-b border-slate-200">
                         <tr>
-                            <th class="px-8 py-5">網紅 / 分類</th>
-                            <th class="px-8 py-5">平台</th>
-                            <th class="px-6 py-5 text-center">次數</th>
-                            <th class="px-8 py-5 text-right">總安裝 (CPI)</th>
-                            <th class="px-8 py-5 text-right">總營收 (ROAS)</th>
-                            <th class="px-8 py-5 text-center">操作</th>
+                            <th class="px-10 py-5">網紅 / 分類</th>
+                            <th class="px-10 py-5">平台</th>
+                            <th class="px-10 py-5 text-center">次數</th>
+                            <th class="px-10 py-5 text-right">總安裝/CPI</th>
+                            <th class="px-10 py-5 text-right">總營收/ROAS</th>
+                            <th class="px-10 py-5 text-center">分析</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 text-base">
@@ -493,4 +493,5 @@
     }).mount('#app');
 </script>
 </body>
+
 </html>
