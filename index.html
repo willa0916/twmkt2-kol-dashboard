@@ -10,132 +10,125 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* 全域字體放大 */
-        body { font-family: 'Microsoft JhengHei', sans-serif; background-color: #f1f5f9; font-size: 18px; }
-        .text-huge { font-size: 2.5rem; font-weight: 900; }
-        .modal-bg { background-color: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px); }
-        [v-cloak] { display: none !important; }
-        table th { font-size: 0.9rem !important; letter-spacing: 0.1em; }
-        .card-kpi { transition: transform 0.2s; }
-        .card-kpi:hover { transform: translateY(-5px); }
+        body { font-family: 'Microsoft JhengHei', sans-serif; background-color: #f1f5f9; font-size: 16px; }
+        .modal-bg { background-color: rgba(15, 23, 42, 0.9); backdrop-filter: blur(4px); }
+        /* 移除 v-cloak，改用手動控制 */
     </style>
 </head>
 <body>
 
-<div id="app" v-cloak>
-    <nav class="bg-slate-900 text-white p-6 shadow-2xl sticky top-0 z-50">
+<div id="app">
+    <nav class="bg-slate-900 text-white p-5 shadow-lg sticky top-0 z-50">
         <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-3xl font-black tracking-tighter flex items-center">
-                <i class="fas fa-chart-line text-blue-400 mr-4"></i>行銷2_KOL成效資料庫
+            <h1 class="text-xl md:text-2xl font-bold flex items-center tracking-wide">
+                <i class="fas fa-shield-alt text-green-400 mr-3"></i>行銷2_KOL成效資料庫<span class="text-xs ml-2 bg-slate-700 px-2 py-1 rounded text-slate-300">Pro</span>
             </h1>
-            <div class="flex items-center gap-6">
-                <button v-if="savedUrl" @click="resetSettings" class="text-sm text-slate-400 hover:text-white transition">
-                    <i class="fas fa-cog mr-1"></i>重設
+            <div class="flex items-center gap-3">
+                <button v-if="savedUrl" @click="resetSettings" class="text-sm bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded transition border border-slate-600">
+                    <i class="fas fa-cog mr-1"></i>設定
                 </button>
-                <button v-if="savedUrl" @click="fetchData" class="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-xl font-black shadow-lg flex items-center transition active:scale-95">
+                <button v-if="savedUrl" @click="startFetch" class="bg-blue-600 hover:bg-blue-500 px-5 py-2 rounded text-base font-bold shadow-lg flex items-center transition" :disabled="loading">
                     <i :class="loading ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'" class="mr-2"></i>
-                    {{ loading ? '載入中' : '同步資料' }}
+                    {{ loading ? '連線中...' : '同步' }}
                 </button>
             </div>
         </div>
     </nav>
 
     <div v-if="!savedUrl" class="min-h-[80vh] flex items-center justify-center p-6">
-        <div class="bg-white rounded-[2rem] shadow-2xl p-12 max-w-2xl w-full border border-slate-100 text-center">
-            <div class="w-24 h-24 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-8 text-4xl shadow-inner">
+        <div class="bg-white rounded-2xl shadow-2xl p-10 max-w-xl w-full text-center border border-slate-200">
+            <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">
                 <i class="fas fa-link"></i>
             </div>
-            <h2 class="text-4xl font-black text-slate-800 mb-4">啟動資料庫</h2>
-            <p class="text-slate-500 mb-10 text-lg">請貼上您的 Google Sheet ID 或 CSV 連結</p>
+            <h2 class="text-2xl font-bold text-slate-800 mb-2">連結 Google Sheet</h2>
+            <p class="text-slate-500 mb-8 text-sm">請輸入檔案 ID，系統將自動尋找最佳連線路徑</p>
             
-            <div class="space-y-6">
-                <input v-model="inputSheetId" type="text" placeholder="在此貼上 ID 或網址..." 
-                       class="w-full p-5 bg-slate-50 border-2 border-slate-200 rounded-2xl focus:border-blue-500 outline-none text-xl transition shadow-sm">
-                <button @click="saveIdAndLoad" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black hover:bg-blue-700 shadow-xl text-2xl transition-all transform hover:scale-[1.02]">
-                    開始讀取數據
+            <div class="space-y-4 text-left">
+                <div class="relative">
+                    <span class="absolute left-3 top-3.5 text-gray-400 font-bold text-xs">ID</span>
+                    <input v-model="inputSheetId" type="text" placeholder="例如: 1Tj2N2uGKNbU..." 
+                           class="w-full pl-10 p-3 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-blue-500 outline-none transition">
+                </div>
+                <button @click="saveIdAndLoad" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 shadow-lg transition">
+                    開始連線
                 </button>
             </div>
         </div>
     </div>
 
-    <div class="container mx-auto p-6 md:p-10" v-if="savedUrl">
-        <div v-if="errorMsg" class="bg-rose-50 border-l-8 border-rose-500 text-rose-800 p-8 mb-10 rounded-2xl shadow-xl">
-            <div class="flex items-center gap-4 text-2xl font-black mb-2">
-                <i class="fas fa-exclamation-triangle"></i> 讀取失敗
+    <div class="container mx-auto p-4 md:p-8" v-if="savedUrl">
+        
+        <div v-if="loading" class="bg-blue-50 border-l-4 border-blue-500 text-blue-800 p-4 mb-6 rounded shadow animate-pulse flex justify-between items-center">
+            <div>
+                <span class="font-bold"><i class="fas fa-satellite-dish mr-2"></i>資料同步中...</span>
+                <span class="text-sm ml-2">{{ statusMsg }}</span>
             </div>
-            <p class="text-lg opacity-90">{{ errorMsg }}</p>
-            <div class="mt-6 flex gap-4">
-                <button @click="fetchData" class="bg-rose-600 text-white px-6 py-2 rounded-lg font-bold">重試</button>
-                <button @click="resetSettings" class="bg-white border border-rose-200 px-6 py-2 rounded-lg font-bold">更換連結</button>
+            <div class="text-xs bg-blue-200 px-2 py-1 rounded">嘗試路徑: {{ retryCount + 1 }}/3</div>
+        </div>
+
+        <div v-if="errorMsg" class="bg-rose-50 border-l-8 border-rose-500 text-rose-800 p-6 mb-8 rounded shadow-md">
+            <div class="font-bold text-lg mb-2"><i class="fas fa-exclamation-circle"></i> 連線失敗</div>
+            <p>{{ errorMsg }}</p>
+            <button @click="resetSettings" class="mt-4 bg-white border border-rose-200 px-4 py-2 rounded text-sm font-bold hover:bg-rose-100">重設連結</button>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm mb-8 border border-slate-100 flex flex-wrap gap-5 items-end">
+            <div class="flex-1 min-w-[300px]">
+                <label class="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">搜尋</label>
+                <div class="relative">
+                    <i class="fas fa-search absolute left-4 top-4 text-slate-400"></i>
+                    <input v-model="searchQuery" type="text" placeholder="網紅 / 專案 / 切角..." class="w-full pl-10 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            <div class="w-full md:w-auto text-right">
+                <div class="text-slate-400 text-xs uppercase font-bold">資料筆數</div>
+                <div class="text-blue-600 font-black text-3xl">{{ filteredList.length }}</div>
             </div>
         </div>
 
-        <div class="flex flex-wrap gap-8 items-end mb-10">
-            <div class="flex-1 min-w-[350px] relative">
-                <label class="block text-sm font-black text-slate-400 mb-3 uppercase tracking-widest">快速篩選網紅、專案或切角</label>
-                <div class="relative group">
-                    <i class="fas fa-search absolute left-5 top-5 text-slate-300 text-xl group-focus-within:text-blue-500 transition"></i>
-                    <input v-model="searchQuery" type="text" placeholder="輸入關鍵字..." class="w-full pl-14 p-5 bg-white rounded-2xl text-xl outline-none shadow-sm focus:ring-4 focus:ring-blue-100 transition border border-slate-200">
-                </div>
-            </div>
-            <div class="bg-slate-800 text-white p-6 rounded-2xl shadow-lg flex items-center gap-6">
-                <div class="text-center">
-                    <div class="text-xs text-slate-400 font-bold uppercase mb-1">Total KOLs</div>
-                    <div class="text-3xl font-black">{{ filteredList.length }}</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden min-h-[600px]">
-            <div v-if="loading" class="flex flex-col items-center justify-center py-60">
-                <div class="w-20 h-20 border-8 border-slate-100 border-t-blue-600 rounded-full animate-spin mb-8"></div>
-                <p class="text-2xl font-black text-slate-400">正在分析全球數據...</p>
-            </div>
-
-            <div v-else class="overflow-x-auto">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden min-h-[400px]">
+            <div class="overflow-x-auto">
                 <table class="w-full text-left">
-                    <thead class="bg-slate-50/80 text-slate-400 uppercase font-black tracking-widest border-b border-slate-100">
+                    <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-black tracking-widest border-b border-slate-200">
                         <tr>
-                            <th class="px-8 py-6">KOL / 分類</th>
-                            <th class="px-8 py-6">平台</th>
-                            <th class="px-8 py-6 text-center">次數</th>
-                            <th class="px-8 py-6 text-right">總安裝 (CPI)</th>
-                            <th class="px-8 py-6 text-right">總營收 (ROAS)</th>
-                            <th class="px-8 py-6 text-center">操作</th>
+                            <th class="px-6 py-5">網紅</th>
+                            <th class="px-6 py-5">平台</th>
+                            <th class="px-6 py-5 text-center">次數</th>
+                            <th class="px-6 py-5 text-right">安裝</th>
+                            <th class="px-6 py-5 text-right">營收</th>
+                            <th class="px-6 py-5 text-right">ROAS</th>
+                            <th class="px-6 py-5 text-center">操作</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-50">
-                        <tr v-for="kol in filteredList" :key="kol.name" class="hover:bg-blue-50/40 transition-colors">
-                            <td class="px-8 py-8">
-                                <div class="font-black text-slate-800 text-2xl mb-1">{{ kol.name }}</div>
-                                <div class="flex gap-2">
-                                    <span class="text-xs font-black bg-blue-100 text-blue-600 px-3 py-1 rounded-full uppercase tracking-tighter">{{ kol.category }}</span>
-                                </div>
+                    <tbody class="divide-y divide-slate-100 text-base">
+                        <tr v-for="kol in filteredList" :key="kol.name" class="hover:bg-blue-50/50 transition">
+                            <td class="px-6 py-5">
+                                <div class="font-bold text-slate-800 text-lg">{{ kol.name }}</div>
+                                <div class="text-xs bg-slate-100 px-2 py-1 rounded inline-block mt-1 text-slate-500 font-bold">{{ kol.category }}</div>
                             </td>
-                            <td class="px-8 py-8">
-                                <div class="flex items-center gap-3 font-black text-slate-700 text-xl">
-                                    <i :class="getPlatformIcon(kol.platform)" class="text-2xl text-blue-500"></i>
+                            <td class="px-6 py-5">
+                                <a :href="kol.link" target="_blank" class="flex items-center gap-2 hover:text-blue-600 group text-slate-700 font-bold">
+                                    <i :class="getPlatformIcon(kol.platform)" class="text-lg text-slate-400 group-hover:text-blue-500"></i>
                                     {{ kol.platform }}
-                                </div>
-                                <div class="text-sm text-slate-400 mt-2 font-bold">{{ formatNumber(kol.latestFollowers) }} Followers</div>
+                                </a>
+                                <div class="text-xs text-slate-400 mt-1">{{ formatNumber(kol.latestFollowers) }} 粉絲</div>
                             </td>
-                            <td class="px-8 py-8 text-center font-black text-slate-800 text-2xl">
-                                <div class="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center mx-auto border border-slate-200">
-                                    {{ kol.projects.length }}
-                                </div>
+                            <td class="px-6 py-5 text-center">
+                                <span class="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg text-sm font-bold">{{ kol.projects.length }}</span>
                             </td>
-                            <td class="px-8 py-8 text-right">
-                                <div class="font-black text-emerald-600 text-3xl mb-1">{{ formatNumber(calculateTotal(kol.projects, 'installs')) }}</div>
-                                <div class="text-sm text-slate-400 font-bold">CPI: ${{ calculateCPI(kol) }}</div>
-                            </td>
-                            <td class="px-8 py-8 text-right">
-                                <div class="font-black text-orange-600 text-3xl mb-1">${{ formatNumber(calculateTotal(kol.projects, 'revenue')) }}</div>
-                                <div class="text-sm text-slate-400 font-bold">ROAS: {{ calculateROAS(kol) }}%</div>
-                            </td>
-                            <td class="px-8 py-8 text-center">
-                                <button @click="openDetails(kol)" class="w-16 h-16 bg-white border-2 border-blue-500 text-blue-600 hover:bg-blue-600 hover:text-white rounded-2xl shadow-sm transition-all flex items-center justify-center text-2xl">
+                            <td class="px-6 py-5 text-right font-bold text-emerald-600">{{ formatNumber(calculateTotal(kol.projects, 'installs')) }}</td>
+                            <td class="px-6 py-5 text-right font-bold text-orange-600">${{ formatNumber(calculateTotal(kol.projects, 'revenue')) }}</td>
+                            <td class="px-6 py-5 text-right font-bold text-slate-700">{{ calculateROAS(kol) }}%</td>
+                            <td class="px-6 py-5 text-center">
+                                <button @click="openDetails(kol)" class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-blue-600 hover:bg-blue-600 hover:text-white transition shadow-sm flex items-center justify-center">
                                     <i class="fas fa-chart-pie"></i>
                                 </button>
+                            </td>
+                        </tr>
+                        <tr v-if="filteredList.length === 0 && !loading">
+                            <td colspan="7" class="py-20 text-center text-slate-400">
+                                <div v-if="errorMsg">讀取失敗，請檢查上方錯誤訊息</div>
+                                <div v-else>找不到相符資料</div>
                             </td>
                         </tr>
                     </tbody>
@@ -144,87 +137,53 @@
         </div>
     </div>
 
-    <div v-if="currentKOL" class="fixed inset-0 modal-bg flex items-center justify-center z-[100] p-4 lg:p-10" @click.self="closeDetails">
-        <div class="bg-white rounded-[3rem] shadow-2xl w-full max-w-7xl max-h-full overflow-hidden flex flex-col">
-            <div class="p-10 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <div class="flex items-center gap-8">
-                    <div class="w-20 h-20 rounded-[2rem] bg-blue-600 text-white flex items-center justify-center text-4xl font-black shadow-2xl rotate-3">
-                        {{ currentKOL.name.charAt(0) }}
-                    </div>
-                    <div>
-                        <h2 class="text-4xl font-black text-slate-800 tracking-tight">{{ currentKOL.name }} 分析報告</h2>
-                        <div class="flex gap-4 mt-3">
-                            <span class="bg-blue-100 text-blue-700 px-4 py-1 rounded-xl text-sm font-black uppercase">#{{ currentKOL.category }}</span>
-                            <span class="text-sm text-slate-400 font-bold flex items-center"><i class="fas fa-clock mr-2"></i>最新更新: {{ currentKOL.projects[0].date }}</span>
-                        </div>
-                    </div>
+    <div v-if="currentKOL" class="fixed inset-0 modal-bg flex items-center justify-center z-[100] p-4" @click.self="closeDetails">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center text-2xl font-bold">{{ currentKOL.name.charAt(0) }}</div>
+                    <h2 class="text-2xl font-bold text-slate-800">{{ currentKOL.name }} <span class="text-sm font-normal text-slate-500 ml-2">詳細數據</span></h2>
                 </div>
-                <button @click="closeDetails" class="w-16 h-16 rounded-full hover:bg-rose-50 text-slate-300 hover:text-rose-500 transition-all text-4xl flex items-center justify-center">&times;</button>
+                <button @click="closeDetails" class="w-10 h-10 rounded-full hover:bg-slate-200 text-slate-400 text-2xl">&times;</button>
             </div>
             
-            <div class="p-10 overflow-y-auto custom-scrollbar flex-1">
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
-                    <div class="p-8 bg-slate-50 rounded-3xl border border-slate-100 card-kpi">
-                        <div class="text-sm font-black text-slate-400 uppercase tracking-widest mb-2">Total Cost</div>
-                        <div class="text-4xl font-black text-slate-800">${{ formatNumber(calculateTotal(currentKOL.projects, 'cost')) }}</div>
+            <div class="p-8 overflow-y-auto custom-scrollbar">
+                <div class="mb-8">
+                    <div class="flex justify-end gap-2 mb-4">
+                        <button v-for="m in ['revenue', 'installs', 'views']" :key="m" @click="updateChart(m)" 
+                            :class="['px-4 py-1.5 text-xs rounded-lg font-bold uppercase transition', activeMetric === m ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200']">
+                            {{ m }}
+                        </button>
                     </div>
-                    <div class="p-8 bg-emerald-50 rounded-3xl border border-emerald-100 card-kpi">
-                        <div class="text-sm font-black text-emerald-600 uppercase tracking-widest mb-2">Total Installs</div>
-                        <div class="text-4xl font-black text-emerald-700">{{ formatNumber(calculateTotal(currentKOL.projects, 'installs')) }}</div>
-                    </div>
-                    <div class="p-8 bg-orange-50 rounded-3xl border border-orange-100 card-kpi">
-                        <div class="text-sm font-black text-orange-600 uppercase tracking-widest mb-2">Total Revenue</div>
-                        <div class="text-4xl font-black text-orange-700">${{ formatNumber(calculateTotal(currentKOL.projects, 'revenue')) }}</div>
-                    </div>
-                    <div class="p-8 bg-indigo-50 rounded-3xl border border-indigo-100 card-kpi">
-                        <div class="text-sm font-black text-indigo-600 uppercase tracking-widest mb-2">Efficiency</div>
-                        <div class="text-4xl font-black text-indigo-700">{{ calculateROAS(currentKOL) }}%</div>
-                    </div>
-                </div>
-
-                <div class="mb-12 bg-white rounded-3xl border-2 border-slate-50 p-10 shadow-inner">
-                    <div class="flex flex-wrap justify-between items-center mb-10 gap-6">
-                        <h3 class="text-2xl font-black text-slate-800">趨勢視覺化分析</h3>
-                        <div class="flex bg-slate-100 p-2 rounded-2xl gap-2">
-                            <button v-for="m in ['revenue', 'installs', 'views', 'cost']" :key="m" @click="updateChart(m)" 
-                                :class="['px-8 py-3 rounded-xl font-black text-sm uppercase transition-all', activeMetric === m ? 'bg-white text-blue-600 shadow-xl' : 'text-slate-500 hover:text-slate-800']">
-                                {{ m === 'revenue' ? '營收' : m === 'installs' ? '安裝' : m === 'views' ? '觀看' : '報價' }}
-                            </button>
-                        </div>
-                    </div>
-                    <div class="h-[400px] w-full">
+                    <div class="h-[300px] border rounded-2xl p-4 bg-white shadow-sm">
                         <canvas id="trendChart"></canvas>
                     </div>
                 </div>
 
-                <h3 class="text-2xl font-black text-slate-800 mb-8 px-2">合作歷史明細</h3>
-                <div class="overflow-hidden rounded-3xl border border-slate-200">
-                    <table class="w-full text-lg">
-                        <thead class="bg-slate-50 text-slate-500 font-black uppercase text-xs">
+                <div class="overflow-x-auto rounded-2xl border border-slate-200">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
                             <tr>
-                                <th class="px-8 py-6">合作細節</th>
-                                <th class="px-8 py-6 text-right">報價</th>
-                                <th class="px-8 py-6 text-right">觀看數</th>
-                                <th class="px-8 py-6 text-right text-emerald-600">安裝數</th>
-                                <th class="px-8 py-6 text-right text-orange-600">總營收</th>
+                                <th class="px-6 py-4">日期 / 專案 / 切角</th>
+                                <th class="px-6 py-4 text-right">成本</th>
+                                <th class="px-6 py-4 text-right">觀看</th>
+                                <th class="px-6 py-4 text-right text-emerald-600">安裝</th>
+                                <th class="px-6 py-4 text-right text-orange-600">營收</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            <tr v-for="p in currentKOL.projects" :key="p.date" class="hover:bg-slate-50/80">
-                                <td class="px-8 py-8">
-                                    <div class="text-xs text-slate-400 font-bold mb-1 uppercase tracking-widest font-mono">{{ p.date }}</div>
-                                    <div class="font-black text-slate-800 text-xl">{{ p.name }}</div>
-                                    <div v-if="p.angle && p.angle !== '-'" class="mt-3 inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-4 py-1.5 rounded-xl font-black text-xs">
-                                        <i class="fas fa-bullseye"></i> {{ p.angle }}
-                                    </div>
-                                    <div class="mt-3">
-                                        <a v-if="p.url" :href="p.url" target="_blank" class="text-xs text-blue-500 font-bold hover:underline">查看合作連結 <i class="fas fa-external-link-alt ml-1"></i></a>
+                        <tbody class="divide-y divide-slate-100 text-base">
+                            <tr v-for="p in currentKOL.projects" :key="p.date" class="hover:bg-slate-50">
+                                <td class="px-6 py-4">
+                                    <div class="text-xs text-slate-400 mb-1 font-mono">{{ p.date }}</div>
+                                    <div class="font-bold text-slate-800">{{ p.name }}</div>
+                                    <div v-if="p.angle && p.angle !== '-'" class="mt-1 text-xs text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded inline-block">
+                                        #{{ p.angle }}
                                     </div>
                                 </td>
-                                <td class="px-8 py-8 text-right font-bold text-slate-500 text-xl">${{ formatNumber(p.cost) }}</td>
-                                <td class="px-8 py-8 text-right font-bold text-slate-500 text-xl">{{ formatNumber(p.views) }}</td>
-                                <td class="px-8 py-8 text-right font-black text-emerald-600 text-2xl">{{ formatNumber(p.installs) }}</td>
-                                <td class="px-8 py-8 text-right font-black text-orange-600 text-2xl">${{ formatNumber(p.revenue) }}</td>
+                                <td class="px-6 py-4 text-right font-mono text-slate-500">${{ formatNumber(p.cost) }}</td>
+                                <td class="px-6 py-4 text-right font-mono text-slate-500">{{ formatNumber(p.views) }}</td>
+                                <td class="px-6 py-4 text-right font-bold text-emerald-600">{{ formatNumber(p.installs) }}</td>
+                                <td class="px-6 py-4 text-right font-bold text-orange-600">${{ formatNumber(p.revenue) }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -237,22 +196,25 @@
 <script>
     const { createApp } = Vue;
 
-    const app = createApp({
+    createApp({
         data() {
             return {
                 inputSheetId: '',
-                savedUrl: localStorage.getItem('kol_mega_v1') || '',
+                savedUrl: localStorage.getItem('kol_final_id') || '',
                 kols: [],
                 loading: false,
                 errorMsg: '',
+                statusMsg: '',
+                retryCount: 0,
                 searchQuery: '',
                 currentKOL: null,
                 chartInstance: null,
-                activeMetric: 'revenue'
+                activeMetric: 'revenue',
+                uniqueCategories: []
             }
         },
         mounted() {
-            if (this.savedUrl) this.fetchData();
+            if (this.savedUrl) this.startFetch();
         },
         computed: {
             filteredList() {
@@ -269,47 +231,74 @@
                 const match = id.match(/\/d\/([a-zA-Z0-9-_]+)/);
                 if (match) id = match[1];
                 if (id.length < 10) { alert("ID 格式不正確"); return; }
-                const url = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv`;
-                localStorage.setItem('kol_mega_v1', url);
-                this.savedUrl = url;
-                this.fetchData();
+                
+                localStorage.setItem('kol_final_id', id);
+                this.savedUrl = id;
+                this.startFetch();
             },
             resetSettings() {
                 if(confirm('確定要清除設定嗎？')) {
-                    localStorage.removeItem('kol_mega_v1');
+                    localStorage.removeItem('kol_final_id');
                     this.savedUrl = '';
                     this.kols = [];
+                    this.errorMsg = '';
                 }
             },
-            async fetchData() {
+            startFetch() {
                 this.loading = true;
                 this.errorMsg = '';
-                // 使用 allorigins 備援，若 direct 失敗會自動切換
-                const targetUrl = this.savedUrl;
-                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+                this.statusMsg = '正在初始化連線...';
+                this.retryCount = 0;
+                this.fetchWithStrategy(0);
+            },
+            async fetchWithStrategy(index) {
+                // 定義三條連線路徑
+                const sheetId = this.savedUrl;
+                const gvizUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
+                
+                const strategies = [
+                    { name: '高速通道 (AllOrigins)', url: `https://api.allorigins.win/raw?url=${encodeURIComponent(gvizUrl)}` },
+                    { name: '備用通道 (CorsProxy)', url: `https://corsproxy.io/?${encodeURIComponent(gvizUrl)}` },
+                    { name: '緊急通道 (ThingProxy)', url: `https://thingproxy.freeboard.io/fetch/${gvizUrl}` }
+                ];
+
+                if (index >= strategies.length) {
+                    this.loading = false;
+                    this.errorMsg = "所有連線路徑皆失敗，請稍後再試，或檢查 Google Sheet 權限。";
+                    return;
+                }
+
+                const currentStrategy = strategies[index];
+                this.retryCount = index;
+                this.statusMsg = `正在嘗試：${currentStrategy.name}`;
 
                 try {
-                    const response = await fetch(proxyUrl);
-                    if (!response.ok) throw new Error("伺服器連線失敗，請檢查權限設定。");
+                    const response = await fetch(currentStrategy.url);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     const text = await response.text();
-                    
-                    if (text.trim().startsWith('<')) throw new Error("讀取到錯誤頁面，請確認 Sheet 權限設為「知道連結的人均可檢視」。");
+
+                    if (text.trim().startsWith('<') || text.includes('<!DOCTYPE html>')) {
+                        throw new Error("讀取到網頁而非 CSV");
+                    }
 
                     Papa.parse(text, {
                         header: false,
                         skipEmptyLines: 'greedy',
                         complete: (results) => {
-                            if (results.data && results.data.length > 1) {
+                            if (results.data.length > 1) {
                                 this.processSmartData(results.data);
+                                this.loading = false;
                             } else {
-                                this.errorMsg = "CSV 檔案內容為空。";
+                                throw new Error("資料為空");
                             }
-                            this.loading = false;
-                        }
+                        },
+                        error: (err) => { throw err; }
                     });
+
                 } catch (e) {
-                    this.errorMsg = e.message;
-                    this.loading = false;
+                    console.warn(`策略 ${index + 1} 失敗:`, e);
+                    // 失敗後，延遲 1 秒再試下一個
+                    setTimeout(() => this.fetchWithStrategy(index + 1), 1000);
                 }
             },
             processSmartData(rows) {
@@ -333,8 +322,10 @@
                     revenue: findIdx(['營收', 'revenue', 'income'])
                 };
 
-                if (idx.name === -1 || idx.installs === -1) {
-                    this.errorMsg = "無法對應欄位，請確認標題列是否有：名稱、安裝、營收等關鍵字。";
+                // 寬容模式：只要有名字就算成功
+                if (idx.name === -1) {
+                    this.errorMsg = "無法辨識標題列，請確認第一列包含「名稱」或「Name」。";
+                    this.loading = false;
                     return;
                 }
 
@@ -343,7 +334,6 @@
                     const name = String(row[idx.name] || '').trim();
                     if (!name) return;
 
-                    // 強力數字清洗邏輯 (排除所有非數字、非點、非負號的字元)
                     const cleanNum = (v) => {
                         if (!v) return 0;
                         const n = parseFloat(String(v).replace(/[^0-9.-]/g, ''));
@@ -352,100 +342,4 @@
 
                     const project = {
                         name: row[idx.project] || '未命名',
-                        angle: idx.angle !== -1 ? (row[idx.angle] || '-') : '-',
-                        date: row[idx.date] || '2026-01-01',
-                        url: row[idx.url] || '',
-                        cost: cleanNum(row[idx.cost]),
-                        views: cleanNum(row[idx.views]),
-                        installs: cleanNum(row[idx.installs]),
-                        revenue: cleanNum(row[idx.revenue])
-                    };
-
-                    if (!kolMap[name]) {
-                        kolMap[name] = {
-                            name,
-                            platform: row[idx.platform] || 'Other',
-                            link: row[idx.link] || '#',
-                            latestFollowers: cleanNum(row[idx.followers]),
-                            category: row[idx.category] || 'General',
-                            projects: [project]
-                        };
-                    } else {
-                        kolMap[name].projects.push(project);
-                        if (new Date(project.date) >= new Date(kolMap[name].projects[0].date)) {
-                            kolMap[name].latestFollowers = cleanNum(row[idx.followers]);
-                        }
-                    }
-                });
-                
-                this.kols = Object.values(kolMap).sort((a,b) => 
-                    new Date(b.projects[0].date) - new Date(a.projects[0].date)
-                );
-            },
-            formatNumber(num) { return new Intl.NumberFormat().format(num); },
-            calculateTotal(projs, field) { return projs.reduce((s, p) => s + (p[field]||0), 0); },
-            calculateAverage(projs, field) { return projs.length ? Math.round(this.calculateTotal(projs, field)/projs.length) : 0; },
-            calculateCPI(k) { 
-                const c = this.calculateTotal(k.projects, 'cost');
-                const i = this.calculateTotal(k.projects, 'installs');
-                return i > 0 ? (c/i).toFixed(1) : 0;
-            },
-            calculateROAS(k) {
-                const c = this.calculateTotal(k.projects, 'cost');
-                const r = this.calculateTotal(k.projects, 'revenue');
-                return c > 0 ? Math.round((r/c)*100) : 0;
-            },
-            getPlatformIcon(p) {
-                p = (p || '').toLowerCase();
-                if(p.includes('youtube')) return 'fab fa-youtube';
-                if(p.includes('facebook')) return 'fab fa-facebook';
-                if(p.includes('instagram')) return 'fab fa-instagram';
-                return 'fas fa-link';
-            },
-            openDetails(kol) {
-                this.currentKOL = kol;
-                this.activeMetric = 'revenue';
-                this.$nextTick(() => this.renderChart());
-            },
-            closeDetails() { this.currentKOL = null; if(this.chartInstance) this.chartInstance.destroy(); },
-            updateChart(m) { this.activeMetric = m; this.renderChart(); },
-            renderChart() {
-                const canvas = document.getElementById('trendChart');
-                if(!canvas) return;
-                const ctx = canvas.getContext('2d');
-                if(this.chartInstance) this.chartInstance.destroy();
-                
-                const data = [...this.currentKOL.projects].sort((a,b) => new Date(a.date) - new Date(b.date));
-                const colors = { revenue: '#ea580c', installs: '#10b981', views: '#3b82f6', cost: '#64748b' };
-                
-                this.chartInstance = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: data.map(d => d.date),
-                        datasets: [{
-                            label: this.activeMetric.toUpperCase(),
-                            data: data.map(d => d[this.activeMetric]),
-                            borderColor: colors[this.activeMetric],
-                            backgroundColor: colors[this.activeMetric] + '15',
-                            fill: true,
-                            tension: 0.4,
-                            pointRadius: 8,
-                            pointHoverRadius: 12,
-                            borderWidth: 4
-                        }]
-                    },
-                    options: { 
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }
-                    }
-                });
-            }
-        }
-    });
-
-    app.mount('#app');
-</script>
-</body>
-</html>
+                        angle: idx.angle !== -1
